@@ -7,7 +7,9 @@ import React, { createContext, useContext, useState, useEffect, useCallback, use
 import { useNavigate } from 'react-router';
 import { apiClient, ApiError } from '@/lib/api-client';
 import { useSentryUser } from '@/hooks/useSentryUser';
-import type { AuthSession, AuthUser } from '../api-types';
+import type { AuthMode, AuthSession, AuthUser } from '../api-types';
+import { INTENDED_URL_KEY } from '@/lib/auth-storage-keys';
+import { getSupabaseBrowserClient } from '@/lib/supabase-browser-client';
 
 interface AuthContextType {
   user: AuthUser | null;
@@ -26,8 +28,9 @@ interface AuthContextType {
   hasOAuth: boolean;
   requiresEmailAuth: boolean;
   
-  // OAuth login method with redirect support
-  login: (provider: 'google' | 'github', redirectUrl?: string) => void;
+  /** OAuth login (legacy Worker redirect or Supabase `signInWithOAuth` when `authMode === 'supabase'`). */
+  login: (provider: 'google' | 'github', redirectUrl?: string) => Promise<void>;
+  authMode: AuthMode;
   
   // Email/password login method
   loginWithEmail: (credentials: { email: string; password: string }) => Promise<void>;
@@ -57,6 +60,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [authProviders, setAuthProviders] = useState<{ google: boolean; github: boolean; email: boolean; } | null>(null);
   const [hasOAuth, setHasOAuth] = useState<boolean>(false);
   const [requiresEmailAuth, setRequiresEmailAuth] = useState<boolean>(true);
+  const [authMode, setAuthMode] = useState<AuthMode>('legacy');
   const navigate = useNavigate();
   
   // Sync user context with Sentry for error tracking
@@ -66,7 +70,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const refreshTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   // Redirect URL management
-  const INTENDED_URL_KEY = 'auth_intended_url';
 
   const setIntendedUrl = useCallback((url: string) => {
     try {
@@ -99,6 +102,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const response = await apiClient.getAuthProviders();
       if (response.success && response.data) {
+        setAuthMode(response.data.mode ?? 'legacy');
         setAuthProviders(response.data.providers);
         setHasOAuth(response.data.hasOAuth);
         setRequiresEmailAuth(response.data.requiresEmailAuth);
@@ -106,6 +110,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch (error) {
       console.warn('Failed to fetch auth providers:', error);
       // Fallback to defaults
+      setAuthMode('legacy');
       setAuthProviders({ google: false, github: false, email: true });
       setHasOAuth(false);
       setRequiresEmailAuth(true);
@@ -160,7 +165,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setSession(null);
       }
     } catch (error) {
-      console.error('Auth check failed:', error);
+      const isUnauthenticated =
+        error instanceof ApiError && error.status === 401;
+      if (!isUnauthenticated) {
+        console.error('Auth check failed:', error);
+      }
       setUser(null);
       setToken(null);
       setSession(null);
@@ -187,19 +196,43 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     initAuth();
   }, [fetchAuthProviders, checkAuth]);
 
-  // OAuth login method with redirect support
-  const login = useCallback((provider: 'google' | 'github', redirectUrl?: string) => {
-    // Store intended redirect URL if provided, otherwise use current location
-    const intendedUrl = redirectUrl || window.location.pathname + window.location.search;
-    setIntendedUrl(intendedUrl);
-    
-    // Build OAuth URL with redirect parameter
-    const oauthUrl = new URL(`/api/auth/oauth/${provider}`, window.location.origin);
-    oauthUrl.searchParams.set('redirect_url', intendedUrl);
-    
-    // Redirect to OAuth provider
-    window.location.href = oauthUrl.toString();
-  }, [setIntendedUrl]);
+  const login = useCallback(
+    async (provider: 'google' | 'github', redirectUrl?: string) => {
+      const intendedUrl =
+        redirectUrl || window.location.pathname + window.location.search;
+      setIntendedUrl(intendedUrl);
+
+      if (authMode === 'supabase') {
+        const sb = getSupabaseBrowserClient();
+        if (!sb) {
+          setError(
+            'Supabase sign-in is not configured. Set VITE_USE_SUPABASE_AUTH, VITE_SUPABASE_URL, and VITE_SUPABASE_ANON_KEY.',
+          );
+          return;
+        }
+        const redirectTo = `${window.location.origin}/auth/callback`;
+        const { error: oauthError } = await sb.auth.signInWithOAuth({
+          provider,
+          options: {
+            redirectTo,
+            ...(provider === 'github'
+              ? { scopes: 'read:user user:email' }
+              : {}),
+          },
+        });
+        if (oauthError) {
+          console.error('Supabase OAuth error', oauthError);
+          setError(oauthError.message);
+        }
+        return;
+      }
+
+      const oauthUrl = new URL(`/api/auth/oauth/${provider}`, window.location.origin);
+      oauthUrl.searchParams.set('redirect_url', intendedUrl);
+      window.location.href = oauthUrl.toString();
+    },
+    [authMode, setIntendedUrl],
+  );
 
   // Email/password login
   const loginWithEmail = useCallback(async (credentials: { email: string; password: string }) => {
@@ -219,7 +252,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           expiresAt: response.data.expiresAt,
         });
         setupTokenRefresh();
-        
+        await apiClient.refreshCsrfToken();
+
         // Navigate to intended URL or default to home
         const intendedUrl = getIntendedUrl();
         clearIntendedUrl();
@@ -257,7 +291,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           expiresAt: response.data.expiresAt,
         });
         setupTokenRefresh();
-        
+        await apiClient.refreshCsrfToken();
+
         // Navigate to intended URL or default to home
         const intendedUrl = getIntendedUrl();
         clearIntendedUrl();
@@ -290,6 +325,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (refreshTimerRef.current) {
         clearInterval(refreshTimerRef.current);
       }
+      void apiClient.refreshCsrfToken();
       navigate('/');
     }
   }, [navigate]);
@@ -315,7 +351,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     authProviders,
     hasOAuth,
     requiresEmailAuth,
-    login, // OAuth method with redirect support
+    authMode,
+    login,
     loginWithEmail, // Email/password method
     register,
     logout,

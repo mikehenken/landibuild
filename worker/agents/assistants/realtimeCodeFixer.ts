@@ -166,12 +166,8 @@ CRITICAL REQUIREMENTS:
 
 Just reply with the corrected SEARCH/REPLACE blocks in this format:
 
-<<<<<<< SEARCH
-[exact lines from current file]
-=======
 [your intended replacement]
->>>>>>> REPLACE`
-
+`;
 const userPromptFormatter = (user_prompt: string, query: string, file: FileOutputType, previousFiles?: FileOutputType[], currentPhase?: PhaseConceptType, issues?: string[]) => {
     const variables: Record<string, string> = {
         query,
@@ -300,8 +296,10 @@ Don't be nitpicky, If there are no actual issues, just say "No issues found".
                 this.save([createAssistantMessage(fixResult.string)]);
 
                 if (fixResult.string.includes('<content>')) {
-                    // Complete rewrite, extract content between tags
-                    const contentMatch = fixResult.string.match(/<content>([\s\S]*?)<\/content>/);
+                    // Complete rewrite: extract content between tags.
+                    // Accept both raw <content>...</content> and comment-prefixed //<content>...</content>
+                    // to handle variation in how different models follow the prompt instructions.
+                    const contentMatch = fixResult.string.match(/(?:\/\/\s*)?<content>([\s\S]*?)(?:\/\/\s*)?<\/content>/);
                     if (contentMatch) {
                         content = contentMatch[1].trim();
                     }

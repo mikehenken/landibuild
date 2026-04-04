@@ -20,14 +20,14 @@ interface LoginModalProps {
 	onClose: () => void;
 
 	// Original OAuth-only interface (for backward compatibility)
-	onLogin: (provider: 'google' | 'github') => void;
+	onLogin: (provider: 'google' | 'github') => void | Promise<void>;
 
 	// New enhanced interfaces (optional)
 	onEmailLogin?: (credentials: {
 		email: string;
 		password: string;
 	}) => Promise<void>;
-	onOAuthLogin?: (provider: 'google' | 'github', redirectUrl?: string) => void;
+	onOAuthLogin?: (provider: 'google' | 'github', redirectUrl?: string) => void | Promise<void>;
 	onRegister?: (data: {
 		email: string;
 		password: string;

@@ -24,11 +24,13 @@ import {
     ModelConfigDeleteData,
     ByokProvidersData
 } from './types';
-import { 
-    getUserProviderStatus, 
+import {
+    getUserProviderStatus,
     getByokModels,
     getPlatformAvailableModels,
-    validateModelAccessForEnvironment
+    validateModelAccessForEnvironment,
+    loadByokKeysFromUserVault,
+    getAccessProviderFromModelId,
 } from './byokHelper';
 import { z } from 'zod';
 import { createLogger } from '../../../logger';
@@ -164,7 +166,7 @@ export class ModelConfigController extends BaseController {
                     );
                     
                     if (!isValidAccess) {
-                        const provider = modelConfig.name.split('/')[0];
+                        const provider = getAccessProviderFromModelId(modelConfig.name);
                         return ModelConfigController.createErrorResponse<ModelConfigUpdateData>(
                             `Model requires API key for provider '${provider}'. Please add your API key in the BYOK settings or contact your platform administrator.`,
                             403
@@ -181,7 +183,7 @@ export class ModelConfigController extends BaseController {
                     );
                     
                     if (!isValidAccess) {
-                        const provider = modelConfig.fallbackModel.split('/')[0];
+                        const provider = getAccessProviderFromModelId(modelConfig.fallbackModel);
                         return ModelConfigController.createErrorResponse<ModelConfigUpdateData>(
                             `Fallback model requires API key for provider '${provider}'. Please add your API key in the BYOK settings or contact your platform administrator.`,
                             403
@@ -295,14 +297,20 @@ export class ModelConfigController extends BaseController {
                 ...(validatedData.tempConfig.providerOverride != null && { providerOverride: validatedData.tempConfig.providerOverride })
             } : baseConfig;
 
-			const userApiKeys: Record<string, string> | undefined = undefined;
-
+			let userApiKeys: Record<string, string> | undefined = undefined;
+			if (validatedData.useUserKeys) {
+				const fromVault = await loadByokKeysFromUserVault(env, user.id);
+				if (Object.keys(fromVault).length > 0) {
+					userApiKeys = fromVault;
+				}
+			}
 
             // Test the configuration
             const testResult = await modelTestService.testModelConfig({
                 modelConfig: configToTest,
                 userApiKeys,
-                testPrompt: validatedData.testPrompt
+                testPrompt: validatedData.testPrompt,
+				userId: user.id,
             });
 
             const responseData: ModelConfigTestData = {

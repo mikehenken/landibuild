@@ -27,6 +27,7 @@ import { createLogger } from '../../logger';
 import { validateEmail, validatePassword } from '../../utils/validationUtils';
 import { extractRequestMetadata } from '../../utils/authUtils';
 import { BaseService } from './BaseService';
+import { jwtVerify } from 'jose';
 
 const logger = createLogger('AuthService');
 
@@ -453,7 +454,7 @@ export class AuthService extends BaseService {
      */
     private async findOrCreateOAuthUser(
         provider: OAuthProvider,
-        oauthUserInfo: OAuthUserInfo
+        oauthUserInfo: OAuthUserInfo,
     ): Promise<schema.User> {
         // Check if user exists with this email
         let user = await this.database
@@ -523,7 +524,14 @@ export class AuthService extends BaseService {
             
             await this.database.insert(schema.authAttempts).values({
                 identifier: identifier.toLowerCase(),
-                attemptType: attemptType as 'login' | 'register' | 'oauth_google' | 'oauth_github' | 'refresh' | 'reset_password',
+                attemptType: attemptType as
+                    | 'login'
+                    | 'register'
+                    | 'oauth_google'
+                    | 'oauth_github'
+                    | 'refresh'
+                    | 'reset_password'
+                    | 'supabase_bridge',
                 success: success,
                 ipAddress: requestMetadata.ipAddress
             });
@@ -789,6 +797,93 @@ export class AuthService extends BaseService {
                 SecurityErrorType.INVALID_INPUT,
                 'Failed to resend verification code',
                 500
+            );
+        }
+    }
+
+    /**
+     * Verify Supabase access JWT (HS256) and create a Worker session (D1 + app JWT cookies).
+     */
+    async exchangeSupabaseAccessToken(accessToken: string, request: Request): Promise<AuthResult> {
+        try {
+            const rawUrl = this.env.SUPABASE_URL?.trim();
+            const jwtSecret = this.env.SUPABASE_JWT_SECRET?.trim();
+            if (!rawUrl || !jwtSecret) {
+                throw new SecurityError(
+                    SecurityErrorType.INVALID_INPUT,
+                    'Supabase authentication is not configured',
+                    503,
+                );
+            }
+
+            const baseUrl = rawUrl.replace(/\/$/, '');
+            const issuer = `${baseUrl}/auth/v1`;
+
+            const { payload } = await jwtVerify(accessToken, new TextEncoder().encode(jwtSecret), {
+                algorithms: ['HS256'],
+                issuer,
+                audience: 'authenticated',
+            });
+
+            const sub = typeof payload.sub === 'string' ? payload.sub : null;
+            const email = typeof payload.email === 'string' ? payload.email : null;
+            if (!sub || !email) {
+                throw new SecurityError(
+                    SecurityErrorType.UNAUTHORIZED,
+                    'Invalid Supabase token',
+                    401,
+                );
+            }
+
+            if (payload.role !== 'authenticated') {
+                throw new SecurityError(
+                    SecurityErrorType.UNAUTHORIZED,
+                    'Invalid Supabase token role',
+                    401,
+                );
+            }
+
+            const meta = payload.user_metadata as Record<string, unknown> | undefined;
+            const fullName = typeof meta?.full_name === 'string' ? meta.full_name : undefined;
+            const avatarUrl = typeof meta?.avatar_url === 'string' ? meta.avatar_url : undefined;
+            const nameFallback = typeof payload.name === 'string' ? payload.name : undefined;
+
+            const oauthUserInfo: OAuthUserInfo = {
+                id: sub,
+                email,
+                name: fullName ?? nameFallback,
+                picture: avatarUrl,
+                emailVerified: true,
+            };
+
+            const user = await this.findOrCreateOAuthUser('supabase', oauthUserInfo);
+
+            const { accessToken: sessionAccessToken, session } = await this.sessionService.createSession(
+                user.id,
+                request,
+            );
+
+            await this.logAuthAttempt(email.toLowerCase(), 'supabase_bridge', true, request);
+            logger.info('Supabase bridge login successful', { userId: user.id });
+
+            return {
+                user: mapUserResponse(user),
+                accessToken: sessionAccessToken,
+                sessionId: session.sessionId,
+                expiresAt: session.expiresAt,
+            };
+        } catch (error) {
+            await this.logAuthAttempt('', 'supabase_bridge', false, request);
+
+            if (error instanceof SecurityError) {
+                throw error;
+            }
+
+            logger.error('Supabase bridge error', error);
+            throw new SecurityError(
+                SecurityErrorType.UNAUTHORIZED,
+                'Supabase authentication failed',
+                401,
             );
         }
     }

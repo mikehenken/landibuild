@@ -34,9 +34,23 @@ export class AuthController extends BaseController {
     /**
      * Check if OAuth providers are configured
      */
+    /** Supabase Auth bridge: OAuth via Supabase, session via Worker + D1. */
+    static isSupabaseAuthEnabled(env: Env): boolean {
+        const flag = env.USE_SUPABASE_AUTH;
+        const on = flag === 'true' || flag === '1';
+        return (
+            on &&
+            !!env.SUPABASE_JWT_SECRET?.trim() &&
+            !!env.SUPABASE_URL?.trim()
+        );
+    }
+
     static hasOAuthProviders(env: Env): boolean {
-        return (!!env.GOOGLE_CLIENT_ID && !!env.GOOGLE_CLIENT_SECRET) || 
-               (!!env.GITHUB_CLIENT_ID && !!env.GITHUB_CLIENT_SECRET);
+        return (
+            AuthController.isSupabaseAuthEnabled(env) ||
+            (!!env.GOOGLE_CLIENT_ID && !!env.GOOGLE_CLIENT_SECRET) ||
+            (!!env.GITHUB_CLIENT_ID && !!env.GITHUB_CLIENT_SECRET)
+        );
     }
     
     /**
@@ -741,21 +755,38 @@ export class AuthController extends BaseController {
         _context: RouteContext
     ): Promise<Response> {
         try {
+            const supabaseMode = AuthController.isSupabaseAuthEnabled(env);
+
+            const legacyGoogle = !!env.GOOGLE_CLIENT_ID && !!env.GOOGLE_CLIENT_SECRET;
+            const legacyGithub = !!env.GITHUB_CLIENT_ID && !!env.GITHUB_CLIENT_SECRET;
+
+            const supabaseGoogle =
+                supabaseMode &&
+                env.SUPABASE_OAUTH_GOOGLE !== 'false' &&
+                env.SUPABASE_OAUTH_GOOGLE !== '0';
+            const supabaseGithub =
+                supabaseMode &&
+                env.SUPABASE_OAUTH_GITHUB !== 'false' &&
+                env.SUPABASE_OAUTH_GITHUB !== '0';
+
             const providers = {
-                google: !!env.GOOGLE_CLIENT_ID && !!env.GOOGLE_CLIENT_SECRET,
-                github: !!env.GITHUB_CLIENT_ID && !!env.GITHUB_CLIENT_SECRET,
-                email: true
+                google: supabaseMode ? supabaseGoogle : legacyGoogle,
+                github: supabaseMode ? supabaseGithub : legacyGithub,
+                email: true,
             };
-            
+
+            const hasOAuth = providers.google || providers.github;
+
             // Include CSRF token with provider info
             const csrfToken = CsrfService.getOrGenerateToken(request, false);
-            
+
             const response = AuthController.createSuccessResponse({
+                mode: supabaseMode ? 'supabase' : 'legacy',
                 providers,
-                hasOAuth: providers.google || providers.github,
-                requiresEmailAuth: !providers.google && !providers.github,
+                hasOAuth,
+                requiresEmailAuth: !hasOAuth,
                 csrfToken,
-                csrfExpiresIn: Math.floor(CsrfService.defaults.tokenTTL / 1000)
+                csrfExpiresIn: Math.floor(CsrfService.defaults.tokenTTL / 1000),
             });
             
             // Set CSRF token cookie with proper expiration
@@ -766,6 +797,70 @@ export class AuthController extends BaseController {
         } catch (error) {
             this.logger.error('Get auth providers error', error);
             return AuthController.createErrorResponse('Failed to get authentication providers', 500);
+        }
+    }
+
+    /**
+     * Bridge Supabase access_token to Worker session (httpOnly cookies).
+     * POST /api/auth/supabase — Authorization: Bearer &lt;access_token&gt; or JSON { access_token }.
+     */
+    static async bridgeSupabase(
+        request: Request,
+        env: Env,
+        _ctx: ExecutionContext,
+        _routeContext: RouteContext,
+    ): Promise<Response> {
+        try {
+            if (!AuthController.isSupabaseAuthEnabled(env)) {
+                return AuthController.createErrorResponse(
+                    'Supabase authentication is not enabled',
+                    503,
+                );
+            }
+
+            let token: string | null = null;
+            const authHeader = request.headers.get('Authorization')?.trim();
+            if (authHeader?.toLowerCase().startsWith('bearer ')) {
+                token = authHeader.slice('bearer '.length).trim();
+            }
+
+            if (!token) {
+                const bodyResult = await AuthController.parseJsonBody<{ access_token?: string }>(request);
+                if (bodyResult.success && bodyResult.data?.access_token) {
+                    token = String(bodyResult.data.access_token).trim();
+                }
+            }
+
+            if (!token) {
+                return AuthController.createErrorResponse('Missing Supabase access token', 401);
+            }
+
+            if (token.length > 16_384) {
+                return AuthController.createErrorResponse('Invalid Supabase access token', 400);
+            }
+
+            const authService = new AuthService(env);
+            const result = await authService.exchangeSupabaseAccessToken(token, request);
+
+            const response = AuthController.createSuccessResponse(
+                formatAuthResponse(result.user, result.sessionId, result.expiresAt),
+            );
+
+            setSecureAuthCookies(response, {
+                accessToken: result.accessToken,
+                accessTokenExpiry: SessionService.config.sessionTTL,
+            });
+
+            if (CsrfService.defaults.rotateOnAuth) {
+                CsrfService.rotateToken(response);
+            }
+
+            return response;
+        } catch (error) {
+            if (error instanceof SecurityError) {
+                return AuthController.createErrorResponse(error.message, error.statusCode);
+            }
+            return AuthController.handleError(error, 'bridge Supabase session');
         }
     }
 }
