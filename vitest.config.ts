@@ -14,13 +14,13 @@ export default defineWorkersConfig({
     deps: {
       optimizer: {
         ssr: {
-          enabled: true,
-          include: [
-            '@cloudflare/containers',
-            '@cloudflare/sandbox',
-            '@babel/traverse',
-            '@babel/types',
-          ],
+            enabled: true,
+            include: [
+              '@cloudflare/containers',
+              '@cloudflare/sandbox',
+              '@babel/traverse',
+              '@babel/types',
+            ],
         },
       },
     },
