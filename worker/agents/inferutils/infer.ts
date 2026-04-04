@@ -3,14 +3,20 @@ import { createAssistantMessage, createUserMessage, Message } from './common';
 import z from 'zod';
 // import { CodeEnhancementOutput, CodeEnhancementOutputType } from '../codegen/phasewiseGenerator';
 import { SchemaFormat } from './schemaFormatters';
-import type { ReasoningEffort } from './config.types';
-import { AgentActionKey, AIModels, InferenceContext, ModelConfig } from './config.types';
+import {
+    type ReasoningEffort,
+    AgentActionKey,
+    AIModels,
+    InferenceContext,
+    ModelConfig,
+    isChatCompletionAIModel,
+    isValidAIModel,
+} from './config.types';
 import { AGENT_CONFIG } from './config';
 import { createLogger } from '../../logger';
 import { RateLimitExceededError, SecurityError } from 'shared/types/errors';
 import { ToolDefinition } from '../tools/types';
 import { validateAgentConstraints } from 'worker/api/controllers/modelConfig/constraintHelper';
-import { isValidAIModel } from './config.types';
 
 const logger = createLogger('InferenceUtils');
 
@@ -49,6 +55,10 @@ function resolveModelConfig(
             logger.warn(`Model ${candidate} not valid, trying next`);
             continue;
         }
+        if (!isChatCompletionAIModel(candidate)) {
+            logger.warn(`Model ${candidate} is not a chat completion model, trying next`);
+            continue;
+        }
         const check = validateAgentConstraints(agentActionName, candidate);
         if (check.constraintEnabled && !check.valid) {
             logger.warn(`Model ${candidate} violates constraints for ${agentActionName}`);
@@ -66,10 +76,18 @@ function resolveModelConfig(
 
     // Validate fallback model
     if (merged.fallbackModel) {
-        const fallbackCheck = validateAgentConstraints(agentActionName, merged.fallbackModel);
-        if (fallbackCheck.constraintEnabled && !fallbackCheck.valid) {
-            logger.warn(`Fallback ${merged.fallbackModel} violates constraints, using default`);
+        if (
+            isValidAIModel(merged.fallbackModel) &&
+            !isChatCompletionAIModel(merged.fallbackModel)
+        ) {
+            logger.warn(`Fallback ${merged.fallbackModel} is not chat-capable, using default`);
             merged.fallbackModel = defaultConfig.fallbackModel;
+        } else {
+            const fallbackCheck = validateAgentConstraints(agentActionName, merged.fallbackModel);
+            if (fallbackCheck.constraintEnabled && !fallbackCheck.valid) {
+                logger.warn(`Fallback ${merged.fallbackModel} violates constraints, using default`);
+                merged.fallbackModel = defaultConfig.fallbackModel;
+            }
         }
     }
 
@@ -147,6 +165,13 @@ export async function executeInference<T extends z.AnyZodObject>(   {
     maxTokens = maxTokens || resolvedConfig.max_tokens || 16000;
     reasoning_effort = reasoning_effort || resolvedConfig.reasoning_effort;
 
+    if (isValidAIModel(modelName) && !isChatCompletionAIModel(modelName)) {
+        throw new InferError(
+            'This model is image-only and does not support chat completions. Choose a chat-capable model.',
+            '',
+        );
+    }
+
     // Exponential backoff for retries
     const backoffMs = (attempt: number) => Math.min(500 * Math.pow(2, attempt), 10000);
 
@@ -165,7 +190,7 @@ export async function executeInference<T extends z.AnyZodObject>(   {
                 actionKey: agentActionName,
                 format,
                 maxTokens,
-                modelName: useCheaperModel ? AIModels.GEMINI_2_5_FLASH : modelName,
+                modelName: useCheaperModel ? (resolvedConfig.fallbackModel ?? AIModels.GEMINI_2_5_FLASH) : modelName,
                 formatOptions: {
                     debug: false,
                 },
@@ -182,7 +207,7 @@ export async function executeInference<T extends z.AnyZodObject>(   {
                 metadata: context.metadata,
                 messages,
                 maxTokens,
-                modelName: useCheaperModel ? AIModels.GEMINI_2_5_FLASH: modelName,
+                modelName: useCheaperModel ? (resolvedConfig.fallbackModel ?? AIModels.GEMINI_2_5_FLASH) : modelName,
                 tools,
                 stream,
                 actionKey: agentActionName,

@@ -4,8 +4,6 @@ import {
     AgentConstraintConfig, 
     AIModels,
     AllModels,
-    LiteModels,
-    RegularModels,
 } from "./config.types";
 import { env } from 'cloudflare:workers';
 
@@ -123,61 +121,76 @@ const PLATFORM_AGENT_CONFIG: AgentConfig = {
 const DEFAULT_AGENT_CONFIG: AgentConfig = {
     ...COMMON_AGENT_CONFIGS,
     templateSelection: {
-        name: AIModels.GEMINI_2_5_FLASH_LITE,
+        //name: AIModels.GEMINI_2_5_FLASH_LITE,
+        name: AIModels.KIMI_2_5,
         max_tokens: 2000,
-        fallbackModel: AIModels.GEMINI_2_5_FLASH,
+        fallbackModel: AIModels.KIMI_2_5,
         temperature: 0.6,
     },
     blueprint: {
-        name: AIModels.GEMINI_3_FLASH_PREVIEW,
+        //name: AIModels.GEMINI_3_FLASH_PREVIEW,
+        name: AIModels.KIMI_2_5,
         reasoning_effort: 'high',
         max_tokens: 64000,
-        fallbackModel: AIModels.GEMINI_2_5_PRO,
+        //fallbackModel: AIModels.GEMINI_2_5_PRO,
+        fallbackModel: AIModels.KIMI_2_5,
         temperature: 1,
     },
     projectSetup: {
-        name: AIModels.GEMINI_3_FLASH_PREVIEW,
+        //name: AIModels.GEMINI_3_FLASH_PREVIEW,
+        name: AIModels.KIMI_2_5,
         ...SHARED_IMPLEMENTATION_CONFIG,
     },
     phaseGeneration: {
-        name: AIModels.GEMINI_3_FLASH_PREVIEW,
+        //name: AIModels.GEMINI_3_FLASH_PREVIEW,
+        name: AIModels.KIMI_2_5,
         ...SHARED_IMPLEMENTATION_CONFIG,
     },
     firstPhaseImplementation: {
-        name: AIModels.GEMINI_3_FLASH_PREVIEW,
+        //name: AIModels.GEMINI_3_FLASH_PREVIEW,
+        name: AIModels.KIMI_2_5,
         ...SHARED_IMPLEMENTATION_CONFIG,
     },
     phaseImplementation: {
-        name: AIModels.GEMINI_3_FLASH_PREVIEW,
+        //name: AIModels.GEMINI_3_FLASH_PREVIEW,
+        name: AIModels.KIMI_2_5,
         ...SHARED_IMPLEMENTATION_CONFIG,
     },
     conversationalResponse: {
-        name: AIModels.GEMINI_2_5_FLASH,
+        //name: AIModels.GEMINI_2_5_FLASH,
+        name: AIModels.KIMI_2_5,
         reasoning_effort: 'low',
         max_tokens: 4000,
         temperature: 0,
-        fallbackModel: AIModels.GEMINI_2_5_PRO,
+        //fallbackModel: AIModels.GEMINI_2_5_PRO,
+        fallbackModel: AIModels.KIMI_2_5,
     },
     deepDebugger: {
-        name: AIModels.GEMINI_3_FLASH_PREVIEW,
+        //name: AIModels.GEMINI_3_FLASH_PREVIEW,
+        name: AIModels.KIMI_2_5,
         reasoning_effort: 'high',
         max_tokens: 8000,
         temperature: 1,
-        fallbackModel: AIModels.GEMINI_2_5_FLASH,
+        //fallbackModel: AIModels.GEMINI_2_5_FLASH,
+        fallbackModel: AIModels.KIMI_2_5,
     },
     fileRegeneration: {
-        name: AIModels.GEMINI_3_FLASH_PREVIEW,
+        //name: AIModels.GEMINI_3_FLASH_PREVIEW,
+        name: AIModels.KIMI_2_5,
         reasoning_effort: 'low',
         max_tokens: 32000,
         temperature: 1,
-        fallbackModel: AIModels.GEMINI_2_5_FLASH,
+        //fallbackModel: AIModels.GEMINI_2_5_FLASH,
+        fallbackModel: AIModels.KIMI_2_5,
     },
     agenticProjectBuilder: {
-        name: AIModels.GEMINI_3_FLASH_PREVIEW,
+        //name: AIModels.GEMINI_3_FLASH_PREVIEW,
+        name: AIModels.KIMI_2_5,
         reasoning_effort: 'high',
         max_tokens: 8000,
         temperature: 1,
-        fallbackModel: AIModels.GEMINI_2_5_FLASH,
+        //fallbackModel: AIModels.GEMINI_2_5_FLASH,
+        fallbackModel: AIModels.KIMI_2_5,
     },
 };
 
@@ -186,13 +199,37 @@ export const AGENT_CONFIG: AgentConfig = env.PLATFORM_MODEL_PROVIDERS
     : DEFAULT_AGENT_CONFIG;
 
 
+/** Workers AI models (gateway `workers-ai/@cf/...`). */
+/** Mid-size Scout added for lower-latency option vs 120B class. Nemotron 120B omitted for fixer latency (see registry for other uses). */
+const WORKERS_AI_CHOICE = new Set([
+	AIModels.KIMI_2_5,
+	AIModels.WORKERS_GPT_OSS_120B,
+	AIModels.WORKERS_GLM_4_7_FLASH,
+	AIModels.WORKERS_LLAMA_4_SCOUT,
+]);
+
+/**
+ * Realtime + fast code fixers: prefer Workers AI, but allow platform defaults (Grok, Gemini),
+ * {@link AIModels.DISABLED} for fast fixer-off, and typical fallbacks so saves match AGENT_CONFIG.
+ */
+const REALTIME_FAST_FIXER_ALLOWED = new Set([
+	...WORKERS_AI_CHOICE,
+	AIModels.DISABLED,
+	AIModels.GROK_4_1_FAST_NON_REASONING,
+	AIModels.GROK_4_1_FAST,
+	AIModels.GROK_CODE_FAST_1,
+	AIModels.GROK_4_FAST,
+	AIModels.GEMINI_2_5_FLASH,
+	AIModels.GEMINI_2_5_PRO,
+]);
+
 export const AGENT_CONSTRAINTS: Map<AgentActionKey, AgentConstraintConfig> = new Map([
 	['fastCodeFixer', {
-		allowedModels: new Set([AIModels.DISABLED]),
+		allowedModels: REALTIME_FAST_FIXER_ALLOWED,
 		enabled: true,
 	}],
 	['realtimeCodeFixer', {
-		allowedModels: new Set([AIModels.DISABLED]),
+		allowedModels: REALTIME_FAST_FIXER_ALLOWED,
 		enabled: true,
 	}],
 	['fileRegeneration', {
@@ -203,16 +240,19 @@ export const AGENT_CONSTRAINTS: Map<AgentActionKey, AgentConstraintConfig> = new
 		allowedModels: new Set(AllModels),
 		enabled: true,
 	}],
+	// Defaults use LARGE fallbacks (e.g. GEMINI_2_5_PRO) and Kimi; platform uses Grok + Pro.
 	['projectSetup', {
-		allowedModels: new Set([...RegularModels, AIModels.GEMINI_2_5_PRO]),
+		allowedModels: new Set(AllModels),
 		enabled: true,
 	}],
+	// Chat can reasonably use any registered chat model (defaults include Kimi, platform Grok).
 	['conversationalResponse', {
-		allowedModels: new Set(RegularModels),
+		allowedModels: new Set(AllModels),
 		enabled: true,
 	}],
+	// DEFAULT_AGENT_CONFIG uses Kimi; COMMON uses Flash-Lite — allow full chat registry.
 	['templateSelection', {
-		allowedModels: new Set(LiteModels),
+		allowedModels: new Set(AllModels),
 		enabled: true,
 	}],
 ]);

@@ -15,7 +15,16 @@ import {
 } from 'openai/resources.mjs';
 import { CompletionSignal, Message, MessageContent, MessageRole } from './common';
 import { ToolCallResult, ToolDefinition, toOpenAITool } from '../tools/types';
-import { AgentActionKey, AI_MODEL_CONFIG, AIModelConfig, AIModels, InferenceMetadata, type InferenceRuntimeOverrides } from './config.types';
+import {
+    AgentActionKey,
+    AI_MODEL_CONFIG,
+    AIModelConfig,
+    AIModels,
+    InferenceMetadata,
+    type InferenceRuntimeOverrides,
+    isChatCompletionAIModel,
+    isValidAIModel,
+} from './config.types';
 import { RateLimitService } from '../../services/rate-limit/rateLimits';
 import { getUserConfigurableSettings } from '../../config';
 import { SecurityError, RateLimitExceededError } from 'shared/types/errors';
@@ -186,8 +195,29 @@ function optimizeTextContent(content: string): string {
     return content;
 }
 
+/**
+ * Normalizes gateway pathnames for the OpenAI SDK: `baseURL` must end at the AI Gateway
+ * compat segment; the SDK appends `/chat/completions`. Users often paste the full request
+ * URL from DevTools or curl (`.../compat/chat/completions`) or a base that already includes
+ * `/compat`, which would otherwise produce unsupported paths like `.../chat/completions/compat/chat/completions`.
+ */
+function normalizeAiGatewayPathname(pathname: string): string {
+	let p = pathname.trim().replace(/\/+$/, '');
+	while (p.endsWith('/chat/completions')) {
+		p = p.slice(0, -'/chat/completions'.length).replace(/\/+$/, '');
+	}
+	return p;
+}
+
 function buildGatewayPathname(cleanPathname: string, providerOverride?: AIGatewayProviders): string {
-    return providerOverride ? `${cleanPathname}/${providerOverride}` : `${cleanPathname}/compat`;
+	const base = normalizeAiGatewayPathname(cleanPathname);
+	if (providerOverride) {
+		return `${base}/${providerOverride}`;
+	}
+	if (base.endsWith('/compat')) {
+		return base;
+	}
+	return `${base}/compat`;
 }
 
 function constructGatewayUrl(url: URL, providerOverride?: AIGatewayProviders): string {
@@ -288,7 +318,12 @@ export async function getConfigurationForModel(
     let providerForcedOverride: AIGatewayProviders | undefined;
     if (modelConfig.directOverride) {
         switch(modelConfig.provider) {
-            case 'openrouter':
+            case 'workers':
+                return {
+                    baseURL: env.CLOUDFLARE_AI_GATEWAY_URL,
+                    apiKey: env.WORKERS_API_KEY,
+                };
+            case 'openrouter': 
                 return {
                     baseURL: 'https://openrouter.ai/api/v1',
                     apiKey: env.OPENROUTER_API_KEY,
@@ -536,7 +571,15 @@ export async function infer<OutputSchema extends z.AnyZodObject>({
     if (messages.length > MAX_LLM_MESSAGES) {
         throw new RateLimitExceededError(`Message limit exceeded: ${messages.length} messages (max: ${MAX_LLM_MESSAGES}). Please use context compactification.`, RateLimitType.LLM_CALLS);
     }
-    
+
+    if (isValidAIModel(modelName) && !isChatCompletionAIModel(modelName)) {
+        throw new InferError(
+            'This model is image-only and does not support chat completions. Choose a chat-capable model.',
+            '',
+            toolCallContext,
+        );
+    }
+
     // Check tool calling depth to prevent infinite recursion
     const currentDepth = toolCallContext?.depth ?? 0;
     if (currentDepth >= getMaxToolCallingDepth(actionKey)) {
@@ -556,6 +599,22 @@ export async function infer<OutputSchema extends z.AnyZodObject>({
         // Maybe in the future can expand using config object for other stuff like global model configs?
         await RateLimitService.enforceLLMCallsRateLimit(env, userConfig.security.rateLimit, metadata.userId, modelName)
         const modelConfig = AI_MODEL_CONFIG[modelName as AIModels];
+
+        if (!modelConfig) {
+            throw new InferError(
+                `Unknown model: "${modelName}". Please select a model registered in the platform registry.`,
+                '',
+                toolCallContext,
+            );
+        }
+
+        if (modelConfig && (modelConfig.modality ?? 'chat') === 'image') {
+            throw new InferError(
+                'This model is for image generation and does not support chat completions. Choose a chat model.',
+                '',
+                toolCallContext,
+            );
+        }
 
         const { apiKey, baseURL, defaultHeaders } = await getConfigurationForModel(
             modelConfig,

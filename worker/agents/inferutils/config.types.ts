@@ -11,12 +11,16 @@ export enum ModelSize {
     LARGE = 'large',
 }
 
+export type AIModelModality = 'chat' | 'image';
+
 export interface AIModelConfig {
     name: string;
     size: ModelSize;
     provider: string;
     creditCost: number;
     contextSize: number;
+    /** Chat/text completions vs image generation (Workers AI image APIs). Default `chat` when omitted. */
+    modality?: AIModelModality;
     nonReasoning?: boolean;
     directOverride?: boolean;
 }
@@ -31,6 +35,84 @@ const MODELS_MASTER = {
             provider: 'None',
             creditCost: 0,
             contextSize: 0,
+        }
+    },
+    // --- Workers AI Models ---
+    KIMI_2_5: {
+        // Gateway compat API expects `workers-ai/` (not `workers/`) — matches OpenAI-compatible chat/completions.
+        id: 'workers-ai/@cf/moonshotai/kimi-k2.5',
+        config: {
+            name: 'Kimi 2.5',
+            size: ModelSize.LARGE,
+            provider: 'workers',
+            creditCost: 3,   // $1.25
+            contextSize: 256000, // 256K context (provider limit; see Moonshot docs)
+        }
+    },
+    WORKERS_GPT_OSS_120B: {
+        id: 'workers-ai/@cf/openai/gpt-oss-120b',
+        config: {
+            name: 'GPT OSS 120B (Workers AI)',
+            size: ModelSize.LARGE,
+            provider: 'workers',
+            creditCost: 2,
+            contextSize: 131072,
+        }
+    },
+    WORKERS_GLM_4_7_FLASH: {
+        id: 'workers-ai/@cf/zai-org/glm-4.7-flash',
+        config: {
+            name: 'GLM 4.7 Flash (Workers AI)',
+            size: ModelSize.LITE,
+            provider: 'workers',
+            creditCost: 0.4,
+            contextSize: 128000,
+        }
+    },
+    WORKERS_LLAMA_4_SCOUT: {
+        id: 'workers-ai/@cf/meta/llama-4-scout-17b-16e-instruct',
+        config: {
+            name: 'Llama 4 Scout 17B (Workers AI)',
+            size: ModelSize.REGULAR,
+            provider: 'workers',
+            // Pricing: https://developers.cloudflare.com/workers-ai/platform/pricing/ — $0.27/M input tokens; scaled vs GPT-5-mini baseline (~1 credit / $0.25/M).
+            creditCost: 1.1,
+            contextSize: 131072,
+        }
+    },
+    WORKERS_NEMOTRON_3_120B: {
+        id: 'workers-ai/@cf/nvidia/nemotron-3-120b-a12b',
+        config: {
+            name: 'Nemotron 3 120B (Workers AI)',
+            size: ModelSize.LARGE,
+            provider: 'workers',
+            // Pricing doc: $0.50/M input, $1.50/M output — heavier than @cf/openai/gpt-oss-120b input row; credits aligned to Kimi/GPT-OSS tier.
+            creditCost: 2.8,
+            contextSize: 131072,
+        }
+    },
+    WORKERS_FLUX_2_KLEIN_9B: {
+        id: 'workers-ai/@cf/black-forest-labs/flux-2-klein-9b',
+        config: {
+            name: 'FLUX.2 Klein 9B (Workers AI)',
+            size: ModelSize.REGULAR,
+            provider: 'workers',
+            // Image pricing: per MP / step (not tokens) — see Workers AI pricing image table; abstract credit for UI vs chat baselines.
+            creditCost: 4,
+            contextSize: 0,
+            modality: 'image',
+        }
+    },
+    WORKERS_LEONARDO_LUCID_ORIGIN: {
+        id: 'workers-ai/@cf/leonardo/lucid-origin',
+        config: {
+            name: 'Lucid Origin (Workers AI)',
+            size: ModelSize.REGULAR,
+            provider: 'workers',
+            // Image: neurons per 512×512 tile + per step — Workers AI pricing image models section.
+            creditCost: 3,
+            contextSize: 0,
+            modality: 'image',
         }
     },
     // --- Google Models ---
@@ -360,24 +442,29 @@ export const AI_MODEL_CONFIG: Record<AIModels, AIModelConfig> = Object.fromEntri
     Object.values(MODELS_MASTER).map((entry) => [entry.id, entry.config])
 ) as Record<AIModels, AIModelConfig>;
 
+function isChatModalityConfig(config: AIModelConfig): boolean {
+	return (config.modality ?? 'chat') !== 'image';
+}
+
 /**
- * Dynamically generated list of Lite models based on ModelSize.LITE
+ * Dynamically generated list of Lite models based on ModelSize.LITE (chat completions only).
  */
 export const LiteModels: AIModels[] = Object.values(MODELS_MASTER)
-    .filter((entry) => entry.config.size === ModelSize.LITE)
-    .map((entry) => entry.id);
+	.filter((entry) => isChatModalityConfig(entry.config) && entry.config.size === ModelSize.LITE)
+	.map((entry) => entry.id);
 
 export const RegularModels: AIModels[] = Object.values(MODELS_MASTER)
-    .filter((entry) => entry.config.size === ModelSize.REGULAR || entry.config.size === ModelSize.LITE)
-    .map((entry) => entry.id);
+	.filter(
+		(entry) =>
+			isChatModalityConfig(entry.config) &&
+			(entry.config.size === ModelSize.REGULAR || entry.config.size === ModelSize.LITE),
+	)
+	.map((entry) => entry.id);
 
+/** All registered chat-completion models (excludes image-generation registry rows). */
 export const AllModels: AIModels[] = Object.values(MODELS_MASTER)
-    .map((entry) => entry.id);
-
-export interface AgentConstraintConfig {
-    allowedModels: Set<AIModels>;
-    enabled: boolean;
-}
+	.filter((entry) => isChatModalityConfig(entry.config))
+	.map((entry) => entry.id);
 
 export interface AgentConstraintConfig {
     allowedModels: Set<AIModels>;
@@ -470,6 +557,21 @@ export function credentialsToRuntimeOverrides(
 
 export function isValidAIModel(value: string): value is AIModels {
   return Object.values(AIModels).includes(value as AIModels);
+}
+
+/**
+ * True if the model supports text chat via infer / chat completions.
+ * Unknown ids (not in {@link AI_MODEL_CONFIG}) are treated as chat-capable.
+ */
+export function isChatCompletionAIModel(model: AIModels | string): boolean {
+	if (!isValidAIModel(model)) {
+		return true;
+	}
+	const cfg: AIModelConfig | undefined = AI_MODEL_CONFIG[model as AIModels];
+	if (!cfg) {
+		return true;
+	}
+	return isChatModalityConfig(cfg);
 }
 
 export function toAIModel(value: string | null | undefined): AIModels | undefined {

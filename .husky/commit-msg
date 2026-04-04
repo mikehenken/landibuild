@@ -1,10 +1,13 @@
-# Add common bun installation paths to PATH
+# Add common bun/brew installation paths to PATH
 export PATH="/opt/homebrew/bin:$HOME/.bun/bin:$PATH"
 
-# Run commitlint if bunx is available
-if command -v bunx >/dev/null 2>&1; then
-  bunx commitlint --edit $1
+# Prefer locally-installed commitlint (node_modules/.bin) to avoid bunx
+# version drift and peer-dependency resolution failures in CI/Windows.
+if command -v npx >/dev/null 2>&1; then
+  npx --no-install commitlint --edit "$1"
+elif command -v bunx >/dev/null 2>&1; then
+  bunx commitlint --edit "$1"
 else
-  echo "⚠️  bunx not found in PATH, skipping commitlint"
+  echo "commitlint skipped: neither npx nor bunx found in PATH"
   exit 0
 fi
