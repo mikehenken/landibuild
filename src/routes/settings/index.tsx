@@ -547,7 +547,7 @@ export default function SettingsPage() {
 									AI provider API keys are managed in the "API
 									Keys & Secrets" section below. Configure
 									your OpenAI, Anthropic, Google AI, and
-									OpenRouter keys there.
+									OpenRouter and Workers keys there.
 								</p>
 
 								<Button

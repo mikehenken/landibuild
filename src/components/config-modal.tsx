@@ -45,17 +45,19 @@ interface ConfigModalProps {
 }
 
 
-// Helper to extract provider from model name (e.g., "openai/gpt-4" -> "openai")
-const getProviderFromModel = (modelName: string): string => {
+/** Aligns with worker getAccessProviderFromModelId: workers-ai/* maps to BYOK/provider key `workers`. */
+const getAccessProviderFromModelId = (modelName: string): string => {
   if (!modelName || modelName === 'default') return '';
-  return modelName.split('/')[0] || '';
+  const prefix = modelName.split('/')[0] || '';
+  if (prefix === 'workers-ai') return 'workers';
+  return prefix;
 };
 
 // Helper to check if user has BYOK key for a model's provider
 const hasUserKeyForModel = (modelName: string, byokProviders: Array<{ provider: string; hasValidKey: boolean }>): boolean => {
-  const provider = getProviderFromModel(modelName);
+  const provider = getAccessProviderFromModelId(modelName);
   if (!provider) return false;
-  
+
   return byokProviders.some(p => p.provider === provider && p.hasValidKey);
 };
 
@@ -176,7 +178,7 @@ export function ConfigModal({
       providerModels.forEach(model => {
         const modelStr = model as string;
         if (!processedModels.has(modelStr)) {
-          const provider = getProviderFromModel(modelStr);
+          const provider = getAccessProviderFromModelId(modelStr);
           const hasUserKey = hasUserKeyForModel(modelStr, byokData.providers);
           
           models.push({
@@ -224,7 +226,7 @@ export function ConfigModal({
       providerModels.some(model => model === currentModel)
     );
     
-    const provider = getProviderFromModel(currentModel);
+    const provider = getAccessProviderFromModelId(currentModel);
     const hasUserKey = hasUserKeyForModel(currentModel, byokData.providers);
     
     return {

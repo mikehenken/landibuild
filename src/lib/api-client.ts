@@ -191,17 +191,28 @@ class ApiClient {
 				method: 'GET',
 				credentials: 'include',
 			});
-			
-			if (response.ok) {
-				const data: ApiResponse<CsrfTokenResponseData> = await response.json();
-				if (data.data?.token) {
-					const expiresIn = data.data.expiresIn || 7200; // Default 2 hours
-					this.csrfTokenInfo = {
-						token: data.data.token,
-						expiresAt: Date.now() + (expiresIn * 1000)
-					};
-					return true;
-				}
+
+			const contentType = response.headers.get('content-type') ?? '';
+			if (
+				!response.ok ||
+				!contentType.includes('application/json')
+			) {
+				console.warn(
+					'CSRF token fetch failed:',
+					response.status,
+					response.statusText,
+				);
+				return false;
+			}
+
+			const data = (await response.json()) as ApiResponse<CsrfTokenResponseData>;
+			if (data.data?.token) {
+				const expiresIn = data.data.expiresIn || 7200; // Default 2 hours
+				this.csrfTokenInfo = {
+					token: data.data.token,
+					expiresAt: Date.now() + expiresIn * 1000,
+				};
+				return true;
 			}
 			return false;
 		} catch (error) {
@@ -215,6 +226,7 @@ class ApiClient {
 	 * Should be called after authentication operations that rotate the token
 	 */
 	async refreshCsrfToken(): Promise<void> {
+		this.csrfTokenInfo = null;
 		await this.fetchCsrfToken();
 	}
 
@@ -281,6 +293,7 @@ class ApiClient {
 		if (endpoint === '/api/auth/profile') return false;
 		if (endpoint === '/api/auth/providers') return false;
 		if (endpoint === '/api/auth/sessions') return false;
+		if (endpoint === '/api/auth/supabase') return false;
 
 		return true;
 	}
@@ -381,7 +394,6 @@ class ApiClient {
                             throw new SecurityError(errorData.type, errorData.message);
                         }
                     }
-                    console.log("Came here");
 
                     throw new ApiError(
                         response.status,
@@ -393,7 +405,13 @@ class ApiClient {
 
 		    return { response, data };
 		} catch (error) {
-            console.error(error);
+			const isGuestProfileCheck =
+				error instanceof ApiError &&
+				error.status === 401 &&
+				endpoint === '/api/auth/profile';
+			if (!isGuestProfileCheck) {
+				console.error(error);
+			}
 			if (error instanceof ApiError || error instanceof RateLimitExceededError || error instanceof SecurityError) {
 				throw error;
 			}
@@ -1173,6 +1191,31 @@ class ApiClient {
 	 */
 	async getAuthProviders(): Promise<ApiResponse<AuthProvidersResponseData>> {
 		return this.request<AuthProvidersResponseData>('/api/auth/providers');
+	}
+
+	/**
+	 * Exchange Supabase access JWT for Worker session cookies (Supabase Auth mode).
+	 */
+	async bridgeSupabaseSession(
+		accessToken: string,
+	): Promise<ApiResponse<LoginResponseData>> {
+		const result = await this.request<LoginResponseData>('/api/auth/supabase', {
+			method: 'POST',
+			headers: {
+				Authorization: `Bearer ${accessToken}`,
+			},
+		});
+		// Worker rotates CSRF cookie on auth; drop cached header token so it matches the new cookie.
+		if (result.success) {
+			this.csrfTokenInfo = null;
+			const synced = await this.fetchCsrfToken();
+			if (!synced) {
+				console.warn(
+					'Session bridged but CSRF token could not be refreshed; retry or reload the page.',
+				);
+			}
+		}
+		return result;
 	}
 
 	/**

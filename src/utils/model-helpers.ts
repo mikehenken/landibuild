@@ -22,8 +22,11 @@ export function getProviderInfo(modelValue?: string): ProviderInfo {
 	if (modelValue.includes('cerebras/')) {
 		return { name: 'Cerebras', color: 'bg-purple-100 text-purple-800 dark:bg-purple-900/20 dark:text-purple-400' };
 	}
-	if (modelValue.includes('[openrouter]')) {
+	if (modelValue.includes('[openrouter]')) {	
 		return { name: 'OpenRouter', color: 'bg-pink-100 text-pink-800 dark:bg-pink-900/20 dark:text-pink-400' };
+	}
+	if (modelValue.includes('workers-ai/') || modelValue.includes('workers/')) {
+		return { name: 'Workers', color: 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400' };
 	}
 	if (modelValue.includes('openai/') || modelValue.includes('gpt') || modelValue.includes('o3') || modelValue.includes('o4')) {
 		return { name: 'OpenAI', color: 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400' };

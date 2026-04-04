@@ -193,9 +193,10 @@ export type {
 } from 'worker/services/sandbox/sandboxTypes';
 
 // Config/Inference Types
-export type { 
+export type {
   AgentActionKey,
   AgentConfig,
+  AIModelModality,
   ModelConfig,
   ReasoningEffortType as ReasoningEffort,
   ProviderOverrideType as ProviderOverride
@@ -262,7 +263,10 @@ export type ProfileResponseData = {
   sessionId: string;
 };
 
+export type AuthMode = 'supabase' | 'legacy';
+
 export interface AuthProvidersResponseData {
+  mode: AuthMode;
   providers: {
     google: boolean;
     github: boolean;

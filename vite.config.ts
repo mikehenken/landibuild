@@ -29,6 +29,17 @@ export default defineConfig({
 		svgr(),
 		cloudflare({
 			configPath: 'wrangler.jsonc',
+			// @cloudflare/vite-plugin cannot build/pull sandbox images on native Windows (use WSL for full container dev).
+			...(process.platform === 'win32'
+				? {
+						config: (wranglerConfig) => ({
+							dev: {
+								...wranglerConfig.dev,
+								enable_containers: false,
+							},
+						}),
+					}
+				: {}),
 		}),
 		tailwindcss(),
 		// sentryVitePlugin({
