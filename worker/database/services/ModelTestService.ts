@@ -4,7 +4,7 @@
  */
 
 import { BaseService } from './BaseService';
-import { AIModels } from '../../agents/inferutils/config.types';
+import { AI_MODEL_CONFIG, AIModels, isValidAIModel } from '../../agents/inferutils/config.types';
 import { infer, InferError } from '../../agents/inferutils/core';
 import { createUserMessage } from '../../agents/inferutils/common';
 import type { TestResult, ModelTestRequest, ModelTestResult } from '../types';
@@ -17,11 +17,26 @@ export class ModelTestService extends BaseService {
     async testModelConfig({
         modelConfig,
         userApiKeys,
-        testPrompt = "Hello! Please respond with 'Test successful' to confirm the connection is working."
+        testPrompt = "Hello! Please respond with 'Test successful' to confirm the connection is working.",
+        userId,
     }: ModelTestRequest): Promise<ModelTestResult> {
         const startTime = Date.now();
         const modelName: string = modelConfig.name;
         const cleanModelName = modelName.replace(/\[.*?\]/, ''); // Remove provider prefix for display
+        const lookupId = cleanModelName.trim();
+
+        if (isValidAIModel(lookupId)) {
+            const cfg = AI_MODEL_CONFIG[lookupId as AIModels];
+            if (cfg && (cfg.modality ?? 'chat') === 'image') {
+                return {
+                    success: false,
+                    error:
+                        'This model is registered for image generation only; chat connection tests are not supported yet.',
+                    latencyMs: 0,
+                    modelUsed: cleanModelName,
+                };
+            }
+        }
 
         try {
             const testMessage = createUserMessage(testPrompt);
@@ -29,7 +44,7 @@ export class ModelTestService extends BaseService {
             // Use core inference system to test the model configuration
             const response = await infer({
                 env: this.env,
-                metadata: { agentId: `test-${Date.now()}`, userId: 'system' }, // Generate unique test ID
+                metadata: { agentId: `test-${Date.now()}`, userId },
                 messages: [testMessage],
                 modelName: modelName,
                 maxTokens: Math.min(modelConfig.max_tokens || 100, 100), // Limit to 100 tokens for test
@@ -181,6 +196,7 @@ export class ModelTestService extends BaseService {
             'google-ai-studio': AIModels.GEMINI_2_5_FLASH,
             'gemini': AIModels.GEMINI_2_5_FLASH,
             // 'openrouter': AIModels.OPENROUTER_QWEN_3_CODER, // Removed - not available
+            'workers': AIModels.WORKERS_GLM_4_7_FLASH,
             // 'cerebras': AIModels.CEREBRAS_GPT_OSS
         };
 

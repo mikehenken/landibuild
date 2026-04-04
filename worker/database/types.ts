@@ -242,6 +242,8 @@ export interface ModelTestRequest {
     modelConfig: ModelConfig;
     userApiKeys?: Record<string, string>;
     testPrompt?: string;
+    /** Used for rate limits and per-user config in infer(); must be the authenticated user id. */
+    userId: string;
 }
 
 /**

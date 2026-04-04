@@ -101,6 +101,19 @@ export function getTemplatesData(): SecretTemplate[] {
 			required: false,
 			category: 'ai',
 		},
+		{
+			id: 'WORKERS_API_KEY',
+			displayName: 'Workers API Key',
+			envVarName: 'WORKERS_API_KEY',
+			provider: 'workers',
+			icon: '🤖',
+			description: 'Workers API key for Workers AI models',
+			instructions: 'Go to Workers → API Keys → Create new key',
+			placeholder: 'cfut-...',
+			validation: '^cfut-[a-zA-Z0-9_-]{48,}$',
+			required: false,
+			category: 'ai',
+		},
 
 		// BYOK (Bring Your Own Key) AI Providers - Lenient validation for compatibility
 		{
@@ -157,6 +170,21 @@ export function getTemplatesData(): SecretTemplate[] {
 			instructions: 'Go to Cerebras Platform → API Keys → Create new key',
 			placeholder: 'csk-... or any format',
 			validation: '^.{10,}$',
+			required: false,
+			category: 'byok',
+		},
+		{
+			id: 'WORKERS_API_KEY_BYOK',
+			displayName: 'Workers AI (BYOK)',
+			envVarName: 'WORKERS_API_KEY_BYOK',
+			provider: 'workers',
+			icon: '🤖',
+			description:
+				'Use your Cloudflare Workers AI API token (cfut-...) for workers-ai/* models via AI Gateway',
+			instructions:
+				'Go to Cloudflare Dashboard → Workers & Pages → API keys → Create token',
+			placeholder: 'cfut-...',
+			validation: '^cfut-.{10,}$',
 			required: false,
 			category: 'byok',
 		},

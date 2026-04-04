@@ -142,6 +142,24 @@ export class CodingAgentController extends BaseController {
 
             const { templateDetails, selection, projectType: finalProjectType } = await getTemplateForQuery(env, inferenceContext, query, projectType, body.images, this.logger, body.selectedTemplate);
 
+            // App row must exist before clients open the WS (owner-only route checks DB).
+            const appService = new AppService(env);
+            const titleSeed = query.trim().slice(0, 100) || 'New project';
+            await appService.createApp({
+                id: agentId,
+                userId: user.id,
+                sessionToken: null,
+                title: titleSeed,
+                description: null,
+                originalPrompt: query,
+                finalPrompt: query,
+                framework: '',
+                visibility: 'private',
+                status: 'generating',
+                createdAt: new Date(),
+                updatedAt: new Date(),
+            });
+
             const websocketUrl = `${url.protocol === 'https:' ? 'wss:' : 'ws:'}//${url.host}/api/agent/${agentId}/ws`;
             const httpStatusUrl = `${url.origin}/api/agent/${agentId}`;
 

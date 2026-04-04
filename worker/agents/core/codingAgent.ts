@@ -351,28 +351,24 @@ export class CodeGeneratorAgent extends Agent<Env, AgentState> implements AgentI
     
     protected async saveToDatabase() {
         this.logger().info(`Saving agent ${this.getAgentId()} to database`);
-        // Save the app to database (authenticated users only)
         const appService = new AppService(this.env);
-        await appService.createApp({
-            id: this.state.metadata.agentId,
-            userId: this.state.metadata.userId,
-            sessionToken: null,
+        const agentId = this.state.metadata.agentId;
+        const frameworks = this.state.blueprint.frameworks ?? [];
+        await appService.updateApp(agentId, {
             title: this.state.blueprint.title || this.state.query.substring(0, 100),
-            description: this.state.blueprint.description,
+            description: this.state.blueprint.description ?? null,
             originalPrompt: this.state.query,
             finalPrompt: this.state.query,
-            framework: this.state.blueprint.frameworks.join(','),
+            framework: frameworks.length > 0 ? frameworks.join(',') : '',
             visibility: 'private',
             status: 'generating',
-                createdAt: new Date(),
-            updatedAt: new Date()
-            });
-        this.logger().info(`App saved successfully to database for agent ${this.state.metadata.agentId}`, { 
-            agentId: this.state.metadata.agentId, 
-            userId: this.state.metadata.userId,
-            visibility: 'private'
         });
-        this.logger().info(`Agent initialized successfully for agent ${this.state.metadata.agentId}`);
+        this.logger().info(`App updated successfully in database for agent ${agentId}`, {
+            agentId,
+            userId: this.state.metadata.userId,
+            visibility: 'private',
+        });
+        this.logger().info(`Agent initialized successfully for agent ${agentId}`);
     }
 
     // ==========================================

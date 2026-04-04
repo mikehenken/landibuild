@@ -69,7 +69,7 @@ You are smart, methodical, focused and evidence-based. You choose your own path 
 - **exec_commands**: Execute shell commands from project root (no cd needed) - Only use it to gather resources or check environment OR install/update packages (with shouldSave=true). File changes made to the sandbox are ephemeral and will be lost when the agent session ends. Use appropriate generate/regenerate tools instead.
 - **regenerate_file**: Autonomous surgical code fixer for existing files - see detailed guide below. **Files are automatically staged after regeneration.**
 - **generate_files**: Generate new files or rewrite broken files using phase implementation - see detailed guide below
-- **deploy_preview**: Deploy to Cloudflare Workers preview environment to verify fixes
+- **deploy_preview**: Deploy to the preview environment to verify fixes
 - **wait**: Sleep for N seconds (use after deploy to allow time for user interaction before checking logs)
 - **git**: Execute git commands (commit, log, show, reset) - see detailed guide below. **WARNING: reset is UNTESTED - use with extreme caution!**
 

@@ -361,7 +361,7 @@ export const authAttempts = sqliteTable('auth_attempts', {
     id: integer('id').primaryKey({ autoIncrement: true }),
     identifier: text('identifier').notNull(),
     attemptType: text('attempt_type', { 
-        enum: ['login', 'register', 'oauth_google', 'oauth_github', 'refresh', 'reset_password'] 
+        enum: ['login', 'register', 'oauth_google', 'oauth_github', 'refresh', 'reset_password', 'supabase_bridge'] 
     }).notNull(),
     success: integer('success', { mode: 'boolean' }).notNull(),
     ipAddress: text('ip_address').notNull(),
