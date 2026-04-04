@@ -1,23 +1,4 @@
 ## LANDiBUILD
-
-> **Landi’s open-source AI app builder** — a full-stack generator you can self-host. Users describe what they want in natural language; agents plan, implement, preview, and deploy.
-
-<div align="center">
-
-## Live site
-
-**[landi.build](https://landi.build)**
-
-*LANDiBUILD is the Landi platform shell for this repository.*
-
-[![Deploy to Workers](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/cloudflare/vibesdk)
-
-**Deploy flow:** The button targets the upstream Workers deploy template URL. For this fork, point the deploy URL at **your** GitHub remote after you publish it.
-
-*Follow [docs/setup.md](docs/setup.md) to configure required services.*
-
-</div>
-
 ---
 
 ## What is LANDiBUILD?
@@ -494,7 +475,6 @@ LANDiBUILD implements enterprise-grade security:
 
 - 📖 Check [Cloudflare Workers Docs](https://developers.cloudflare.com/workers/)
 - 💬 Join [Cloudflare Discord](https://discord.gg/cloudflaredev)
-- 🐛 Report issues on [GitHub](https://github.com/your-org/cloudflare-vibecoding-starter-kit/issues)
 
 ---
 
@@ -521,15 +501,9 @@ Want to contribute to LANDiBUILD? Here's how:
 ### 💬 **Community**  
 - [Discord](https://discord.gg/cloudflaredev) - Real-time chat and support
 - [Community Forum](https://community.cloudflare.com/) - Technical discussions
-- [GitHub Discussions](https://github.com/your-org/cloudflare-vibecoding-starter-kit/discussions) - Feature requests and ideas
-
 ### 🎓 **Learning Resources**
 - [Workers Learning Path](https://developers.cloudflare.com/learning-paths/workers/) - Master Workers development
 - [Full-Stack Guide](https://developers.cloudflare.com/pages/tutorials/build-a-blog-using-nuxt-and-sanity/) - Build complete applications
 - [AI Integration](https://developers.cloudflare.com/workers-ai/) - Add AI to your apps
 
 ---
-
-## 📄 License
-
-MIT License - see [LICENSE](LICENSE) for details.
