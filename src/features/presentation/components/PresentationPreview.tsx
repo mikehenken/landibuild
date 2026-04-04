@@ -1,7 +1,7 @@
 import { Presentation } from 'lucide-react';
 import { PreviewIframe } from '@/routes/chat/components/preview-iframe';
 import clsx from 'clsx';
-import { useState, useRef, useMemo } from 'react';
+import { useState, useRef, useMemo, useCallback } from 'react';
 import { HEADER_STYLES } from '@/routes/chat/components/view-header-styles';
 import {
 	usePresentationFiles,
@@ -24,8 +24,17 @@ export function PresentationPreview({
 	files = [],
 	templateDetails = null,
 	featureState,
+	previewRef,
 }: PreviewComponentProps) {
 	const iframeRef = useRef<HTMLIFrameElement>(null);
+
+	const setMainIframeRef = useCallback(
+		(node: HTMLIFrameElement | null) => {
+			iframeRef.current = node;
+			previewRef.current = node;
+		},
+		[previewRef],
+	);
 	const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
 	const [failedIframes, setFailedIframes] = useState<Set<number>>(new Set());
 	const sidebarScrollRef = useRef<HTMLDivElement>(null);
@@ -191,7 +200,7 @@ export function PresentationPreview({
 							</div>
 							<div className="flex-1 min-h-0">
 								<PreviewIframe
-									ref={iframeRef}
+									ref={setMainIframeRef}
 									src={mainPreviewUrl}
 									className="w-full h-full"
 									title="Current Slide"
@@ -253,7 +262,7 @@ export function PresentationPreview({
 							</div>
 							<div className="flex-1 min-h-0">
 								<PreviewIframe
-									ref={iframeRef}
+									ref={setMainIframeRef}
 									src={mainPreviewUrl}
 									className="w-full h-full"
 									title="Current Slide"
@@ -290,7 +299,7 @@ export function PresentationPreview({
 						<div className="w-full h-full max-w-[95%] max-h-[95%] flex items-center justify-center">
 							<div className="w-full aspect-video rounded-xl overflow-hidden shadow-2xl border border-border-primary/30 bg-bg-4">
 								<PreviewIframe
-									ref={iframeRef}
+									ref={setMainIframeRef}
 									src={mainPreviewUrl}
 									className="w-full h-full"
 									title="Presentation"

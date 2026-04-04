@@ -24,6 +24,10 @@ interface LoadState {
 }
 
 const MAX_RETRIES = 10;
+
+/** Sandboxed previews must allow fullscreen so the host can call iframe.requestFullscreen(). */
+const IFRAME_SANDBOX =
+	'allow-scripts allow-same-origin allow-pointer-lock allow-forms allow-modals allow-orientation-lock allow-popups allow-presentation allow-fullscreen';
 const REDEPLOY_AFTER_ATTEMPT = 8;
 const POST_LOAD_WAIT_SANDBOX = 0;
 const POST_LOAD_WAIT_DISPATCHER = 0;
@@ -336,7 +340,8 @@ export const PreviewIframe = forwardRef<HTMLIFrameElement, PreviewIframeProps>(
 		if (loadState.status === 'loaded' && loadState.loadedSrc) {
 			return (
 				<iframe
-                    sandbox="allow-scripts allow-same-origin allow-pointer-lock allow-forms allow-modals allow-orientation-lock	allow-popups allow-presentation"
+					sandbox={IFRAME_SANDBOX}
+					allowFullScreen
 					ref={ref}
 					src={loadState.loadedSrc}
 					className={className}
@@ -362,9 +367,10 @@ export const PreviewIframe = forwardRef<HTMLIFrameElement, PreviewIframeProps>(
 			return (
 				<div className={`${className} relative flex flex-col items-center justify-center bg-bg-3 border border-text/10 rounded-lg`}>
                     {loadState.status === 'postload' && loadState.loadedSrc && (
-                        <iframe
-                            sandbox="allow-scripts allow-same-origin allow-pointer-lock allow-forms allow-modals allow-orientation-lock	allow-popups allow-presentation"
-                            ref={ref}
+						<iframe
+							sandbox={IFRAME_SANDBOX}
+							allowFullScreen
+							ref={ref}
                             src={loadState.loadedSrc}
                             className="absolute inset-0 opacity-0 pointer-events-none"
                             title={title}

@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useLocation } from 'react-router';
 import clsx from 'clsx';
+import { useLandiPlatformNavChromeVisible } from '@/hooks/use-landi-platform-nav-chrome';
 
 export function GlobalHeader() {
 	const { user } = useAuth();
@@ -18,6 +19,7 @@ export function GlobalHeader() {
 	const hasMaintenanceMessage = Boolean(status.hasActiveMessage && status.globalUserMessage.trim().length > 0);
 	const hasChangeLogs = Boolean(status.changeLogs && status.changeLogs.trim().length > 0);
 	const { pathname } = useLocation();
+	const landiChromeVisible = useLandiPlatformNavChromeVisible();
 
 	useEffect(() => {
 		if (!hasChangeLogs) {
@@ -31,7 +33,11 @@ export function GlobalHeader() {
 				initial={{ y: -10, opacity: 0 }}
 				animate={{ y: 0, opacity: 1 }}
 				transition={{ duration: 0.2, ease: 'easeOut' }}
-				className={clsx("sticky top-0 z-50", pathname !== "/" && "bg-bg-3")}
+				className={clsx(
+					'sticky z-40',
+					landiChromeVisible ? 'top-16' : 'top-0',
+					pathname !== '/' && 'bg-bg-3',
+				)}
 			>
 				<div className="relative">
 					{/* Subtle gradient accent */}
@@ -92,7 +98,7 @@ export function GlobalHeader() {
 							/>
 						)} */}
 							<ThemeToggle />
-							<AuthButton />
+							{!landiChromeVisible ? <AuthButton /> : null}
 						</motion.div>
 					</div>
 				</div>

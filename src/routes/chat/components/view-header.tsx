@@ -6,7 +6,6 @@ import type { ProjectType } from '@/api-types';
 interface ViewHeaderProps {
 	view: 'preview' | 'editor' | 'docs' | 'blueprint' | 'presentation';
 	onViewChange: (mode: 'preview' | 'editor' | 'docs' | 'blueprint' | 'presentation') => void;
-	previewAvailable: boolean;
 	showTooltip: boolean;
 	hasDocumentation: boolean;
 	previewUrl?: string;
@@ -18,7 +17,6 @@ interface ViewHeaderProps {
 export function ViewHeader({
 	view,
 	onViewChange,
-	previewAvailable,
 	showTooltip,
     hasDocumentation,
 	previewUrl,
@@ -32,7 +30,6 @@ export function ViewHeader({
 				<ViewModeSwitch
 					view={view}
 					onChange={onViewChange}
-					previewAvailable={previewAvailable}
 					showTooltip={showTooltip}
 					hasDocumentation={hasDocumentation}
 					previewUrl={previewUrl}

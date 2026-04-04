@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useCallback, useEffect } from 'react';
 import {
 	Settings,
 	Plus,
@@ -142,6 +142,22 @@ export function AppSidebar() {
 	const isLoggedIn = Boolean(user);
 	const navigate = useNavigate();
 	const { state, openMobile, isMobile, toggleSidebar } = useSidebar();
+
+	const goToNewChat = useCallback(() => {
+		navigate('/');
+	}, [navigate]);
+
+	useEffect(() => {
+		const onKeyDown = (e: KeyboardEvent): void => {
+			if (e.key !== 'k' && e.key !== 'K') return;
+			if (!e.ctrlKey && !e.metaKey) return;
+			if (e.altKey || e.shiftKey) return;
+			e.preventDefault();
+			goToNewChat();
+		};
+		window.addEventListener('keydown', onKeyDown);
+		return () => window.removeEventListener('keydown', onKeyDown);
+	}, [goToNewChat]);
 	// Mobile uses Sheet + openMobile; desktop uses open via state (offcanvas hides panel when "collapsed").
 	const isCollapsed = isMobile ? !openMobile : state === 'collapsed';
 
@@ -191,11 +207,12 @@ export function AppSidebar() {
 			<SidebarContent className="text-[calc(1em+0.15em)]">
 				<div className={cn("mb-4", isCollapsed ? "px-2" : "px-3")}>
 					<button
+						type="button"
 						className={cn(
 							'flex items-center justify-between font-medium hover:opacity-90 transition-opacity rounded-xl text-text-primary bg-[#2a2a2a] border border-[#3a3a3a]',
 							isCollapsed ? 'w-10 h-10 mx-auto p-0 justify-center' : 'w-full px-3 py-2.5'
 						)}
-						onClick={() => navigate('/')}
+						onClick={goToNewChat}
 					>
 						<div className="flex items-center gap-2">
 							<Plus className={cn("h-4 w-4", !isCollapsed && "text-text-primary")} />

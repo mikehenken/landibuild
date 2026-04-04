@@ -13,7 +13,6 @@ const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
 export function ViewModeSwitch({
 	view,
 	onChange,
-	previewAvailable = false,
 	showTooltip = false,
 	hasDocumentation = false,
 	previewUrl,
@@ -21,7 +20,6 @@ export function ViewModeSwitch({
 }: {
 	view: 'preview' | 'editor' | 'docs' | 'blueprint' | 'presentation'
 	onChange: (mode: 'preview' | 'editor' | 'docs' | 'blueprint' | 'presentation') => void;
-	previewAvailable: boolean;
 	showTooltip: boolean;
 	hasDocumentation: boolean;
 	previewUrl?: string;
@@ -36,10 +34,6 @@ export function ViewModeSwitch({
 	const previewView = views.find(v => v.id === 'preview');
 	const iconName = previewView?.iconName;
 	const PreviewIcon = (iconName && ICON_MAP[iconName]) || Eye;
-
-	if (!previewAvailable) {
-		return null;
-	}
 
 	return (
 		<div className="flex items-center gap-1 bg-bg-1 rounded-md p-0.5 relative">

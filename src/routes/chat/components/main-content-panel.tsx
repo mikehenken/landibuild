@@ -30,7 +30,6 @@ interface MainContentPanelProps {
 	// Preview state
 	projectType: ProjectType;
 	previewUrl?: string;
-	previewAvailable: boolean;
 	showTooltip: boolean;
 	shouldRefreshPreview: boolean;
 	manualRefreshTrigger: number;
@@ -79,7 +78,6 @@ export function MainContentPanel(props: MainContentPanelProps) {
 		contentDetection,
 		projectType,
 		previewUrl,
-		previewAvailable,
 		showTooltip,
 		shouldRefreshPreview,
 		manualRefreshTrigger,
@@ -113,7 +111,6 @@ export function MainContentPanel(props: MainContentPanelProps) {
 	const commonHeaderProps = {
 		view: view as 'preview' | 'editor' | 'docs' | 'blueprint' | 'presentation',
 		onViewChange,
-		previewAvailable,
 		showTooltip,
 		hasDocumentation,
 		previewUrl,

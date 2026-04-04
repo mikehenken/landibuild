@@ -2,7 +2,7 @@ import React from 'react';
 import { Outlet, useLocation } from 'react-router';
 import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar';
 import { AppSidebar } from './app-sidebar';
-import { CollapsedSidebarTrigger } from './collapsed-sidebar-trigger';
+import { CollapsedSidebarChrome } from './collapsed-sidebar-trigger';
 import { AppsDataProvider } from '@/contexts/apps-data-context';
 import clsx from 'clsx';
 
@@ -23,8 +23,8 @@ export function AppLayout({ children }: AppLayoutProps) {
         } as React.CSSProperties}
       >
         <AppSidebar />
-        <CollapsedSidebarTrigger />
         <SidebarInset className={clsx("bg-[#121212] flex flex-col h-screen relative", pathname !== "/" && "overflow-hidden")}>
+          <CollapsedSidebarChrome />
           <div className={clsx("flex-1 bg-[#121212]", pathname !== "/" && "min-h-0 overflow-auto")}>
             {children || <Outlet />}
           </div>

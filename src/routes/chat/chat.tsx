@@ -426,12 +426,6 @@ export default function Chat() {
         return Object.values(contentDetection.Contents).some(bundle => bundle.type === 'markdown');
     }, [contentDetection]);
 
-	// Preview available based on projectType and content
-	const previewAvailable = useMemo(() => {
-		if (hasDocumentation || !!previewUrl) return true;
-		return false;
-	}, [hasDocumentation, previewUrl]);
-
 	const showMainView = useMemo(() => {
 		// For agentic mode: show preview panel when files exist or preview URL exists
 		if (behaviorType === 'agentic') {
@@ -865,7 +859,6 @@ export default function Chat() {
 								contentDetection={contentDetection}
 								projectType={projectType}
 								previewUrl={previewUrl}
-								previewAvailable={previewAvailable}
 								showTooltip={showTooltip}
 								shouldRefreshPreview={shouldRefreshPreview}
 								manualRefreshTrigger={manualRefreshTrigger}

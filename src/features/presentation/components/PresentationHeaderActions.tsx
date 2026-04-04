@@ -33,7 +33,13 @@ export function PresentationHeaderActions({
 	};
 
 	const handleFullscreen = () => {
-		previewRef.current?.requestFullscreen();
+		const el = previewRef.current;
+		if (!el) {
+			return;
+		}
+		void el.requestFullscreen().catch((err: unknown) => {
+			console.warn('[Presentation] Fullscreen request failed', err);
+		});
 	};
 
 	const handleExportPdf = () => {
