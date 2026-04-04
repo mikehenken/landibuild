@@ -171,7 +171,7 @@
             },
             "version": "1.0.0"
         },
-        "CUSTOM_DOMAIN": "build.itradebiohacks.com",
+        "CUSTOM_DOMAIN": "vibe.landi.build",
         "MAX_SANDBOX_INSTANCES": "10",
         "SANDBOX_INSTANCE_TYPE": "standard-3",
         "USE_SUPABASE_AUTH": "",
