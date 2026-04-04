@@ -177,8 +177,8 @@ export function useChat({
 		setMessages((prev: ChatMessage[]) => addOrUpdateMessage(prev, message));
 	}, []);
 
-	const sendUserMessage = useCallback((message: string) => {
-		setMessages(prev => [...prev, createUserMessage(message)]);
+	const sendUserMessage = useCallback((message: string, images?: ImageAttachment[]) => {
+		setMessages(prev => [...prev, createUserMessage(message, images)]);
 	}, []);
 
 	const loadBootstrapFiles = useCallback((files: FileType[]) => {

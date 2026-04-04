@@ -1,0 +1,21 @@
+sources:
+  - id: ag-ui-protocol
+    title: "AG-UI (Agent-User Interaction) Integration"
+    url: "https://docs.ag2.ai/latest/docs/user-guide/ag-ui/"
+    description: "Standardizes how frontends communicate with agents, handles streaming, tool-call lifecycle, state sync, and human-in-the-loop checkpoints."
+  - id: a2ui-protocol
+    title: "AG2 + A2UI Protocol - AI-to-User Interface Standard"
+    url: "https://ag2.ai/ecosystem/a2ui"
+    description: "Declarative generative UI specification that enables agents to dynamically generate and render rich, interactive UI components in real-time."
+  - id: copilotkit-open-canvas
+    title: "CopilotKit Open Multi-Agent Canvas"
+    url: "https://github.com/CopilotKit/open-multi-agent-canvas"
+    description: "Open-source multi-agent chat interface with split-pane/artifact UX."
+  - id: copilotkit-cloudflare
+    title: "CopilotKit Cloudflare Workers Integration"
+    url: "https://github.com/klammertime/ag-ui-cloudflare"
+    description: "Native AG-UI protocol adapter providing full protocol support with Cloudflare models."
+  - id: partykit-docs
+    title: "How PartyKit works"
+    url: "https://docs.partykit.io/how-partykit-works"
+    description: "PartyKit runtime built on Cloudflare's workerd runtime, powering PartySocket and Durable Objects."

@@ -8,6 +8,8 @@ import type { ToolEvent } from '../utils/message-helpers';
 import type { ConversationMessage } from '@/api-types';
 import { useState, useEffect, useRef } from 'react';
 import { DebugSessionBubble } from './debug-session-bubble';
+import type { ChatAttachmentImage } from '../types/chat-attachment-image';
+import { chatAttachmentImageSrc } from '../types/chat-attachment-image';
 
 /**
  * Strip internal system tags that should not be displayed to users
@@ -17,9 +19,16 @@ function sanitizeMessageForDisplay(message: string): string {
 	return message.replace(/<system_context>[\s\S]*?<\/system_context>\n/gi, '').trim();
 }
 
-export function UserMessage({ message }: { message: string }) {
+export function UserMessage({
+	message,
+	attachments,
+}: {
+	message: string;
+	attachments?: ChatAttachmentImage[];
+}) {
 	const sanitizedMessage = sanitizeMessageForDisplay(message);
-	
+	const hasAttachments = attachments && attachments.length > 0;
+
 	return (
 		<div className="flex gap-3">
 			<div className="align-text-top pl-1">
@@ -27,9 +36,31 @@ export function UserMessage({ message }: { message: string }) {
 					<span className="text-xs">U</span>
 				</div>
 			</div>
-			<div className="flex flex-col gap-2 min-w-0">
+			<div className="flex flex-col gap-2 min-w-0 flex-1">
 				<div className="font-medium text-text-50">You</div>
-				<Markdown className="text-text-primary/80">{sanitizedMessage}</Markdown>
+				{hasAttachments && (
+					<ul className="flex flex-wrap gap-2 list-none p-0 m-0">
+						{attachments!.map((img) => (
+							<li
+								key={img.id}
+								className="rounded-lg overflow-hidden border border-border-primary max-w-[min(100%,12rem)]"
+							>
+								<img
+									src={chatAttachmentImageSrc(img)}
+									alt={img.filename}
+									className="max-h-40 w-full object-cover bg-bg-3"
+								/>
+							</li>
+						))}
+					</ul>
+				)}
+				{sanitizedMessage ? (
+					<div className="rounded-xl px-4 py-3 bg-[rgb(41,41,41)]">
+						<Markdown className="text-text-primary/90 text-base prose-p:text-base prose-li:text-base max-w-none">
+							{sanitizedMessage}
+						</Markdown>
+					</div>
+				) : null}
 			</div>
 		</div>
 	);
@@ -348,7 +379,7 @@ export function AIMessage({
 			<div className="align-text-top pl-1">
 				<AIAvatar className="size-6 text-orange-500" />
 			</div>
-			<div className="flex flex-col gap-2 min-w-0">
+			<div className="flex flex-col gap-2 min-w-0 text-base">
 				<div className="font-mono font-medium text-text-50">Orange</div>
 				
 				{/* Message content with inline tool events (from streaming) */}
@@ -378,7 +409,7 @@ interface MarkdownProps extends React.ComponentProps<'article'> {
 export function Markdown({ children, className, ...props }: MarkdownProps) {
 	return (
 		<article
-			className={clsx('prose prose-sm prose-teal', className)}
+			className={clsx('prose prose-teal', className)}
 			{...props}
 		>
 			<ReactMarkdown

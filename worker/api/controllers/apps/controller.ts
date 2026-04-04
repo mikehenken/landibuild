@@ -10,6 +10,7 @@ import {
     SingleAppData,
     FavoriteToggleData,
     UpdateAppVisibilityData,
+    UpdateAppTitleData,
     AppDeleteData
 } from './types';
 // import { withCache } from '../../../services/cache/wrapper';
@@ -228,6 +229,51 @@ export class AppController extends BaseController {
         } catch (error) {
             this.logger.error('Error updating app visibility:', error);
             return AppController.createErrorResponse<UpdateAppVisibilityData>('Failed to update app visibility', 500);
+        }
+    }
+
+    // Update app title
+    static async updateAppTitle(request: Request, env: Env, _ctx: ExecutionContext, context: RouteContext): Promise<ControllerResponse<ApiResponse<UpdateAppTitleData>>> {
+        try {
+            const user = context.user!;
+
+            const appId = context.pathParams.id;
+            if (!appId) {
+                return AppController.createErrorResponse<UpdateAppTitleData>('App ID is required', 400);
+            }
+
+            const bodyResult = await AppController.parseJsonBody(request);
+            if (!bodyResult.success) {
+                return bodyResult.response! as ControllerResponse<ApiResponse<UpdateAppTitleData>>;
+            }
+            
+            const title = (bodyResult.data as { title?: string })?.title;
+
+            if (!title || title.trim() === '') {
+                return AppController.createErrorResponse<UpdateAppTitleData>('Title is required', 400);
+            }
+
+            const appService = new AppService(env);
+            const result = await appService.updateAppTitle(appId, user.id, title.trim());
+
+            if (!result.success) {
+                const statusCode = result.error === 'App not found' ? 404 : 
+                                 result.error?.includes('only change the title of your own apps') ? 403 : 500;
+                return AppController.createErrorResponse<UpdateAppTitleData>(result.error || 'Failed to update app title', statusCode);
+            }
+
+            const responseData: UpdateAppTitleData = { 
+                app: {
+                    id: result.app!.id,
+                    title: result.app!.title,
+                    updatedAt: result.app!.updatedAt
+                },
+                message: 'App title updated successfully'
+            };
+            return AppController.createSuccessResponse(responseData);
+        } catch (error) {
+            this.logger.error('Error updating app title:', error);
+            return AppController.createErrorResponse<UpdateAppTitleData>('Failed to update app title', 500);
         }
     }
 

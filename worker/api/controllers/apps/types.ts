@@ -60,6 +60,18 @@ export interface UpdateAppVisibilityData {
 }
 
 /**
+ * Response data for updateAppTitle
+ */
+export interface UpdateAppTitleData {
+    app: {
+        id: string;
+        title: string;
+        updatedAt: Date | null;
+    };
+    message: string;
+}
+
+/**
  * Response data for deleteApp
  */
 export interface AppDeleteData {

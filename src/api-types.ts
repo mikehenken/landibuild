@@ -30,6 +30,7 @@ export type {
   FavoriteToggleData,
   CreateAppData,
   UpdateAppVisibilityData,
+  UpdateAppTitleData,
   AppDeleteData,
   AppWithUserAndStats
 } from 'worker/api/controllers/apps/types';

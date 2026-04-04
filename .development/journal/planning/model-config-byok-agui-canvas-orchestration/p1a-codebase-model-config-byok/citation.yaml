@@ -1,0 +1,78 @@
+# Phase 1A — citations (repository sources only)
+# External web research: not in scope for this codebase trace task.
+
+sources:
+  - id: SRC-CONFIG
+    type: codebase
+    path: worker/agents/inferutils/config.ts
+    note: AGENT_CONFIG, PLATFORM_AGENT_CONFIG, DEFAULT_AGENT_CONFIG, AGENT_CONSTRAINTS
+
+  - id: SRC-INFER
+    type: codebase
+    path: worker/agents/inferutils/infer.ts
+    note: resolveModelConfig, executeInference precedence
+
+  - id: SRC-CORE
+    type: codebase
+    path: worker/agents/inferutils/core.ts
+    note: getApiKey, getConfigurationForModel, infer + runtimeOverrides
+
+  - id: SRC-TYPES
+    type: codebase
+    path: worker/agents/inferutils/config.types.ts
+    note: InferenceContext, InferenceRuntimeOverrides, credentialsToRuntimeOverrides
+
+  - id: SRC-MODEL-SVC
+    type: codebase
+    path: worker/database/services/ModelConfigService.ts
+    note: D1 user_model_configs merge with AGENT_CONFIG
+
+  - id: SRC-MODEL-CTL
+    type: codebase
+    path: worker/api/controllers/modelConfig/controller.ts
+    note: User-scoped HTTP API, BYOK validation, model test + vault
+
+  - id: SRC-BYOK
+    type: codebase
+    path: worker/api/controllers/modelConfig/byokHelper.ts
+    note: PLATFORM_MODEL_PROVIDERS split, platform vs user key access
+
+  - id: SRC-SECRETS-TPL
+    type: codebase
+    path: worker/types/secretsTemplates.ts
+    note: getBYOKTemplates, provider/envVar definitions
+
+  - id: SRC-PROVIDERS-CTL
+    type: codebase
+    path: worker/api/controllers/modelProviders/controller.ts
+    note: 503 on CRUD; testProvider fetch
+
+  - id: SRC-AGENT-CTL
+    type: codebase
+    path: worker/api/controllers/agent/controller.ts
+    note: startCodeGeneration inferenceContext assembly
+
+  - id: SRC-CODING-AGENT
+    type: codebase
+    path: worker/agents/core/codingAgent.ts
+    note: onStart reload user model configs
+
+  - id: SRC-WS
+    type: codebase
+    path: worker/agents/core/websocket.ts
+    note: SESSION_INIT runtime overrides commented out
+
+  - id: SRC-PHASE-GEN
+    type: codebase
+    path: worker/agents/operations/PhaseGeneration.ts
+    note: reasoning_effort from AGENT_CONFIG
+
+  - id: SRC-RT-FIXER
+    type: codebase
+    path: worker/agents/assistants/realtimeCodeFixer.ts
+    note: infer without executeInference / runtimeOverrides
+
+inferred:
+  - claim: No agency or super-admin hooks in worker TypeScript tree
+    basis: ripgrep agency|superAdmin|super_admin|tenant in worker/**/*.ts — zero matches (2026-04-04)
+    confidence: high for searched patterns; product may use other naming outside worker/

@@ -1,0 +1,16 @@
+# Reference: patterns excluded when copying ~/.config/opencode/skills/orchestration
+# into .cursor/orchestration-bundle/skills/orchestration.
+# The sync script implements these explicitly; this file is documentation only.
+
+# Directory names excluded at any depth:
+node_modules
+coverage
+dist
+
+# File pattern excluded:
+*.tmp
+
+# Optional OS junk (not excluded by the script; document-only):
+# .DS_Store
+# Thumbs.db
+# desktop.ini

@@ -1,6 +1,7 @@
 import { toast } from 'sonner';
 import { generateId } from '@/utils/id-generator';
-import type { RateLimitError, ConversationMessage } from '@/api-types';
+import type { RateLimitError, ConversationMessage, ImageAttachment } from '@/api-types';
+import type { ChatAttachmentImage } from '../types/chat-attachment-image';
 
 export type ToolEvent = {
     name: string;
@@ -15,6 +16,8 @@ export type ChatMessage = Omit<ConversationMessage, 'content'> & {
     ui?: {
         isThinking?: boolean;
         toolEvents?: ToolEvent[];
+        /** Images the user sent with this message (composer or restored history). */
+        images?: ChatAttachmentImage[];
     };
     status?: 'queued' | 'active';
     queuePosition?: number;
@@ -59,11 +62,12 @@ export function createAIMessage(
 /**
  * Create a user message
  */
-export function createUserMessage(message: string): ChatMessage {
+export function createUserMessage(message: string, images?: ImageAttachment[]): ChatMessage {
     return {
         role: 'user',
         conversationId: generateId(),
         content: message,
+        ui: images && images.length > 0 ? { images } : undefined,
     };
 }
 

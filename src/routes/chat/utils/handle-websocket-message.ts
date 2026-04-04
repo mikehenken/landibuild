@@ -18,6 +18,7 @@ import {
     appendToolEvent,
     type ChatMessage,
 } from './message-helpers';
+import { extractImagesFromConversationContent } from './extract-images-from-conversation-content';
 import { completeStages, type ProjectStage } from './project-stage-helpers';
 import { sendWebSocketMessage } from './websocket-helpers';
 import type { PhaseTimelineItem } from '../hooks/use-chat';
@@ -398,10 +399,15 @@ export function createWebSocketMessageHandler(deps: HandleMessageDeps) {
                     if (text?.includes('<Internal Memo>')) continue;
                     
                     if (msg.role === 'user') {
+                        const restoredImages = extractImagesFromConversationContent(
+                            msg.content,
+                            msg.conversationId,
+                        );
                         restoredMessages.push({
                             role: 'user',
                             conversationId: msg.conversationId,
                             content: text || '',
+                            ui: restoredImages.length > 0 ? { images: restoredImages } : undefined,
                         });
                         currentAssistant = null;
                     } else if (msg.role === 'assistant') {

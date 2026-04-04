@@ -546,6 +546,57 @@ export class AppService extends BaseService {
         return { success: true, app: updatedApps[0] };
     }
 
+    /**
+     * Update app title with ownership check
+     */
+    async updateAppTitle(
+        appId: string,
+        userId: string,
+        title: string
+    ): Promise<{
+        success: boolean;
+        error?: string;
+        app?: { id: string; title: string; updatedAt: Date | null };
+    }> {
+        // Check if app exists and user owns it
+        const existingApp = await this.database
+            .select({
+                id: schema.apps.id,
+                userId: schema.apps.userId
+            })
+            .from(schema.apps)
+            .where(eq(schema.apps.id, appId))
+            .limit(1);
+
+        if (existingApp.length === 0) {
+            return { success: false, error: 'App not found' };
+        }
+
+        if (existingApp[0].userId !== userId) {
+            return { success: false, error: 'You can only change the title of your own apps' };
+        }
+
+        // Update the app title
+        const updatedApps = await this.database
+            .update(schema.apps)
+            .set({
+                title,
+                updatedAt: new Date()
+            })
+            .where(eq(schema.apps.id, appId))
+            .returning({
+                id: schema.apps.id,
+                title: schema.apps.title,
+                updatedAt: schema.apps.updatedAt
+            });
+
+        if (updatedApps.length === 0) {
+            return { success: false, error: 'Failed to update app title' };
+        }
+
+        return { success: true, app: updatedApps[0] };
+    }
+
     // ========================================
     // APP VIEW CONTROLLER OPERATIONS
     // ========================================

@@ -11,6 +11,7 @@ import type{
 	FavoriteToggleData,
 	CreateAppData,
 	UpdateAppVisibilityData,
+	UpdateAppTitleData,
 	AppDeleteData,
 	AppDetailsData,
 	AppStarToggleData,
@@ -524,6 +525,22 @@ class ApiClient {
 			{
 				method: 'PUT',
 				body: { visibility },
+			},
+		);
+	}
+
+	/**
+	 * Update app title
+	 */
+	async updateAppTitle(
+		appId: string,
+		title: string,
+	): Promise<ApiResponse<UpdateAppTitleData>> {
+		return this.request<UpdateAppTitleData>(
+			`/api/apps/${appId}/title`,
+			{
+				method: 'PUT',
+				body: { title },
 			},
 		);
 	}

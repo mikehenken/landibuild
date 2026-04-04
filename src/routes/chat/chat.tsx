@@ -15,7 +15,7 @@ import { PhaseTimeline } from './components/phase-timeline';
 import { type DebugMessage } from './components/debug-panel';
 import { DeploymentControls } from './components/deployment-controls';
 import { useChat } from './hooks/use-chat';
-import { type ModelConfigsInfo, type BlueprintType, type PhasicBlueprint, SUPPORTED_IMAGE_MIME_TYPES, type ProjectType, type FileType } from '@/api-types';
+import { type ModelConfigsInfo, type BlueprintType, type PhasicBlueprint, SUPPORTED_IMAGE_MIME_TYPES, type ProjectType, type FileType, type ImageAttachment } from '@/api-types';
 import { featureRegistry } from '@/features';
 import { useFileContentStream } from './hooks/use-file-content-stream';
 import { logger } from '@/utils/logger';
@@ -32,9 +32,17 @@ import { detectContentType, isDocumentationPath, isMarkdownFile } from './utils/
 import { mergeFiles } from '@/utils/file-helpers';
 import { ChatModals } from './components/chat-modals';
 import { MainContentPanel } from './components/main-content-panel';
+import { ChatHeader } from './components/chat-header';
+import { ChatAttachmentsSheet } from './components/chat-attachments-sheet';
 import { ChatInput } from './components/chat-input';
+import { ConfirmDeleteDialog } from '@/components/shared/ConfirmDeleteDialog';
+import { apiClient } from '@/lib/api-client';
+import { appEvents } from '@/lib/app-events';
+import { toast } from 'sonner';
 import { useVault } from '@/hooks/use-vault';
 import { VaultUnlockModal } from '@/components/vault';
+import type { ChatAttachmentImage } from './types/chat-attachment-image';
+import { isRemoteChatImage } from './types/chat-attachment-image';
 
 const isPhasicBlueprint = (blueprint?: BlueprintType | null): blueprint is PhasicBlueprint =>
 	!!blueprint && 'implementationRoadmap' in blueprint;
@@ -60,10 +68,36 @@ export default function Chat() {
 
 	// Load existing app data if chatId is provided
 	const { app, loading: appLoading, refetch: refetchApp } = useApp(urlChatId);
+	const { user } = useAuth();
 
 	// If we have an existing app, use its data
 	const displayQuery = app ? app.originalPrompt || app.title : userQuery || '';
-	const appTitle = app?.title;
+	const appTitle = app?.title ?? '';
+
+	const sessionImagesFromUrl = useMemo((): ImageAttachment[] => {
+		if (!userImages || !Array.isArray(userImages)) return [];
+		return userImages.filter(
+			(x): x is ImageAttachment =>
+				typeof x === 'object' &&
+				x !== null &&
+				'id' in x &&
+				typeof (x as ImageAttachment).id === 'string' &&
+				'base64Data' in x &&
+				typeof (x as ImageAttachment).base64Data === 'string' &&
+				'mimeType' in x,
+		);
+	}, [userImages]);
+
+	const canManageApp = Boolean(user && app?.userId && app.userId === user.id);
+	const persistedAppId = app?.id;
+
+	const [attachmentsOpen, setAttachmentsOpen] = useState(false);
+	const [deleteChatOpen, setDeleteChatOpen] = useState(false);
+	const [isDeletingChat, setIsDeletingChat] = useState(false);
+
+	const headerTitle =
+		appTitle ||
+		(urlChatId === 'new' ? 'New chat' : urlChatId ? 'Chat' : 'Chat');
 
 	// Manual refresh trigger for preview
 	const [manualRefreshTrigger, setManualRefreshTrigger] = useState(0);
@@ -158,7 +192,6 @@ export default function Chat() {
 
 	// GitHub export functionality - use urlChatId directly from URL params
 	const githubExport = useGitHubExport(websocket, urlChatId, refetchApp);
-	const { user } = useAuth();
 
 	const navigate = useNavigate();
 
@@ -308,6 +341,57 @@ export default function Chat() {
 
 		return result;
 	}, [files, templateDetails, projectType]);
+
+	const allChatImages = useMemo((): ChatAttachmentImage[] => {
+		const list: ChatAttachmentImage[] = [];
+		const seen = new Set<string>();
+
+		const add = (img: ChatAttachmentImage): void => {
+			const key = isRemoteChatImage(img)
+				? `u:${img.remoteUrl}`
+				: `b:${img.id}:${img.base64Data.slice(0, 48)}`;
+			if (seen.has(key)) return;
+			seen.add(key);
+			list.push(img);
+		};
+
+		for (const m of messages) {
+			if (m.role === 'user' && m.ui?.images?.length) {
+				for (const img of m.ui.images) add(img);
+			}
+		}
+		for (const img of sessionImagesFromUrl) add(img);
+		for (const img of images) add(img);
+
+		return list;
+	}, [messages, sessionImagesFromUrl, images]);
+
+	/** Badge: user-added images only (not generated code file count). */
+	const attachmentCount = useMemo(() => {
+		let n = allChatImages.length;
+		if (app?.screenshotUrl) n += 1;
+		return n;
+	}, [allChatImages.length, app?.screenshotUrl]);
+
+	const handleDeleteChatConfirm = useCallback(async () => {
+		if (!persistedAppId || !canManageApp) return;
+		try {
+			setIsDeletingChat(true);
+			const response = await apiClient.deleteApp(persistedAppId);
+			if (response.success) {
+				toast.success('Chat deleted');
+				setDeleteChatOpen(false);
+				appEvents.emitAppDeleted(persistedAppId);
+				navigate('/');
+			} else {
+				toast.error('Failed to delete chat');
+			}
+		} catch {
+			toast.error('Failed to delete chat');
+		} finally {
+			setIsDeletingChat(false);
+		}
+	}, [persistedAppId, canManageApp, navigate]);
 
 	const handleFileClick = useCallback((file: FileType) => {
 		logger.debug('handleFileClick()', file);
@@ -588,7 +672,7 @@ export default function Chat() {
 					images: images.length > 0 ? images : undefined,
 				}),
 			);
-			sendUserMessage(newMessage);
+			sendUserMessage(newMessage, images.length > 0 ? images : undefined);
 			setNewMessage('');
 			// Clear images after sending
 			if (images.length > 0) {
@@ -640,20 +724,31 @@ export default function Chat() {
 	}
 
 	return (
-		<div className="size-full flex flex-col min-h-0 text-text-primary">
+		<div className="size-full flex flex-col min-h-0 text-text-primary bg-[#161817]">
 			<div className="flex-1 flex min-h-0 overflow-hidden justify-center">
 				<motion.div
 					layout="position"
-					className="flex-1 shrink-0 flex flex-col basis-0 max-w-lg relative z-10 h-full min-h-0"
+					className="flex-1 shrink-0 flex flex-col basis-0 max-w-[780px] w-full relative z-10 h-full min-h-0 mx-auto"
 				>
-					<div 
-					className={clsx(
-						'flex-1 overflow-y-auto min-h-0 chat-messages-scroll',
-						isDebugging && 'animate-debug-pulse'
-					)} 
-					ref={messagesContainerRef}
-				>
-						<div className="pt-5 px-4 pb-4 text-sm flex flex-col gap-5">
+					<ChatHeader
+						appId={persistedAppId}
+						title={headerTitle}
+						canManage={canManageApp}
+						attachmentCount={attachmentCount}
+						canUploadImages={!isChatDisabled && !isProcessing}
+						onTitleSaved={() => void refetchApp()}
+						onDeleteClick={() => setDeleteChatOpen(true)}
+						onOpenAttachments={() => setAttachmentsOpen(true)}
+						onRequestImageUpload={() => imageInputRef.current?.click()}
+					/>
+					<div
+						className={clsx(
+							'flex-1 overflow-y-auto min-h-0 chat-messages-scroll w-full',
+							isDebugging && 'animate-debug-pulse',
+						)}
+						ref={messagesContainerRef}
+					>
+						<div className="max-w-[720px] mx-auto w-full px-4 pt-5 pb-4 text-base flex flex-col gap-5">
 							{appLoading ? (
 								<div className="flex items-center gap-2 text-text-tertiary">
 									<LoaderCircle className="size-4 animate-spin" />
@@ -661,56 +756,54 @@ export default function Chat() {
 								</div>
 							) : (
 								<>
-									{(appTitle || chatId) && (
-								<div className="flex items-center justify-between mb-2">
-									<div className="text-lg font-semibold">{appTitle}</div>
-								</div>
-							)}
 									<UserMessage
 										message={query ?? displayQuery}
+										attachments={
+											sessionImagesFromUrl.length > 0 ? sessionImagesFromUrl : undefined
+										}
 									/>
 								</>
 							)}
 
 							{mainMessage && (
-							<div className="relative">
-								<AIMessage
-									message={mainMessage.content}
-									isThinking={mainMessage.ui?.isThinking}
-									toolEvents={mainMessage.ui?.toolEvents}
-								/>
-								{chatId && (
-									<div className="absolute right-1 top-1">
-										<DropdownMenu>
-											<DropdownMenuTrigger asChild>
-												<Button
-													variant="ghost"
-													size="icon"
-													className="hover:bg-bg-3/80 cursor-pointer"
-												>
-													<MoreHorizontal className="h-4 w-4" />
-													<span className="sr-only">Chat actions</span>
-												</Button>
-											</DropdownMenuTrigger>
-											<DropdownMenuContent align="end" className="w-56">
-												<DropdownMenuItem
+								<div className="relative">
+									<AIMessage
+										message={mainMessage.content}
+										isThinking={mainMessage.ui?.isThinking}
+										toolEvents={mainMessage.ui?.toolEvents}
+									/>
+									{chatId && (
+										<div className="absolute right-1 top-1">
+											<DropdownMenu>
+												<DropdownMenuTrigger asChild>
+													<Button
+														variant="ghost"
+														size="icon"
+														className="hover:bg-bg-3/80 cursor-pointer"
+													>
+														<MoreHorizontal className="h-4 w-4" />
+														<span className="sr-only">Chat actions</span>
+													</Button>
+												</DropdownMenuTrigger>
+												<DropdownMenuContent align="end" className="w-56">
+													<DropdownMenuItem
 														onClick={(e) => {
 															e.preventDefault();
 															setIsResetDialogOpen(true);
 														}}
-												>
-													<RotateCcw className="h-4 w-4 mr-2" />
-													Reset conversation
-												</DropdownMenuItem>
-											</DropdownMenuContent>
-										</DropdownMenu>
-									</div>
-								)}
-							</div>
-						)}
+													>
+														<RotateCcw className="h-4 w-4 mr-2" />
+														Reset conversation
+													</DropdownMenuItem>
+												</DropdownMenuContent>
+											</DropdownMenu>
+										</div>
+									)}
+								</div>
+							)}
 
 							{otherMessages
-								.filter(message => message.role === 'assistant' && message.ui?.isThinking)
+								.filter((message) => message.role === 'assistant' && message.ui?.isThinking)
 								.map((message) => (
 									<div key={message.conversationId} className="mb-4">
 										<AIMessage
@@ -721,7 +814,7 @@ export default function Chat() {
 									</div>
 								))}
 
-							{isThinking && !otherMessages.some(m => m.ui?.isThinking) && (
+							{isThinking && !otherMessages.some((m) => m.ui?.isThinking) && (
 								<div className="mb-4">
 									<AIMessage
 										message="Planning next phase..."
@@ -729,9 +822,11 @@ export default function Chat() {
 									/>
 								</div>
 							)}
+						</div>
 
-							{/* Only show PhaseTimeline for phasic mode */}
-							{behaviorType !== 'agentic' && (
+						{/* Plan / phases: full 780px column width */}
+						{behaviorType !== 'agentic' && (
+							<div className="w-full max-w-[780px] mx-auto px-4">
 								<PhaseTimeline
 									projectStages={projectStages}
 									phaseTimeline={phaseTimeline}
@@ -757,48 +852,48 @@ export default function Chat() {
 									isGenerating={isGenerating}
 									isThinking={isThinking}
 								/>
-							)}
+							</div>
+						)}
 
-							{/* Deployment and Generation Controls - Only for phasic mode */}
-							{chatId && behaviorType !== 'agentic' && (
-								<motion.div
-									ref={deploymentControlsRef}
-									initial={{ opacity: 0, y: 20 }}
-									animate={{ opacity: 1, y: 0 }}
-									transition={{ duration: 0.3, delay: 0.2 }}
-									className="px-4 mb-6"
-								>
-									<DeploymentControls
-										isPhase1Complete={isPhase1Complete}
-										isDeploying={isDeploying}
-										deploymentUrl={cloudflareDeploymentUrl}
-										instanceId={chatId || ''}
-										isRedeployReady={isRedeployReady}
-										deploymentError={deploymentError}
-										appId={app?.id || chatId}
-										appVisibility={app?.visibility}
-										isGenerating={
-											isGenerating ||
-											isGeneratingBlueprint
+						{chatId && behaviorType !== 'agentic' && (
+							<motion.div
+								ref={deploymentControlsRef}
+								initial={{ opacity: 0, y: 20 }}
+								animate={{ opacity: 1, y: 0 }}
+								transition={{ duration: 0.3, delay: 0.2 }}
+								className="px-4 mb-6 w-full max-w-[780px] mx-auto"
+							>
+								<DeploymentControls
+									isPhase1Complete={isPhase1Complete}
+									isDeploying={isDeploying}
+									deploymentUrl={cloudflareDeploymentUrl}
+									instanceId={chatId || ''}
+									isRedeployReady={isRedeployReady}
+									deploymentError={deploymentError}
+									appId={app?.id || chatId}
+									appVisibility={app?.visibility}
+									isGenerating={
+										isGenerating ||
+										isGeneratingBlueprint
+									}
+									isPaused={isGenerationPaused}
+									onDeploy={handleDeployToCloudflare}
+									onStopGeneration={handleStopGeneration}
+									onResumeGeneration={
+										handleResumeGeneration
+									}
+									onVisibilityUpdate={(newVisibility) => {
+										if (app) {
+											app.visibility = newVisibility;
 										}
-										isPaused={isGenerationPaused}
-										onDeploy={handleDeployToCloudflare}
-										onStopGeneration={handleStopGeneration}
-										onResumeGeneration={
-											handleResumeGeneration
-										}
-										onVisibilityUpdate={(newVisibility) => {
-											// Update app state if needed
-											if (app) {
-												app.visibility = newVisibility;
-											}
-										}}
-									/>
-								</motion.div>
-							)}
+									}}
+								/>
+							</motion.div>
+						)}
 
+						<div className="max-w-[720px] mx-auto w-full px-4 pb-4 text-base flex flex-col gap-5">
 							{otherMessages
-								.filter(message => !message.ui?.isThinking)
+								.filter((message) => !message.ui?.isThinking)
 								.map((message) => {
 									if (message.role === 'assistant') {
 										return (
@@ -814,10 +909,10 @@ export default function Chat() {
 										<UserMessage
 											key={message.conversationId}
 											message={message.content}
+											attachments={message.ui?.images}
 										/>
 									);
 								})}
-
 						</div>
 					</div>
 
@@ -850,7 +945,7 @@ export default function Chat() {
 							initial={{ opacity: 0 }}
 							animate={{ opacity: 1 }}
 							exit={{ opacity: 0 }}
-							className="flex-1 flex shrink-0 basis-0 p-4 pl-0 ml-2 z-30 min-h-0"
+							className="flex-1 flex shrink-0 basis-0 py-4 pr-4 pl-2 z-30 min-h-0"
 						>
 							<MainContentPanel
 								view={view}
@@ -908,6 +1003,22 @@ export default function Chat() {
 					if (!open) clearUnlockRequest();
 				}}
 				reason={vaultState.unlockReason ?? undefined}
+			/>
+
+			<ChatAttachmentsSheet
+				open={attachmentsOpen}
+				onOpenChange={setAttachmentsOpen}
+				chatImages={allChatImages}
+				screenshotUrl={app?.screenshotUrl ?? null}
+			/>
+
+			<ConfirmDeleteDialog
+				open={deleteChatOpen}
+				onOpenChange={setDeleteChatOpen}
+				onConfirm={handleDeleteChatConfirm}
+				isLoading={isDeletingChat}
+				appTitle={headerTitle}
+				title="Delete chat"
 			/>
 		</div>
 	);

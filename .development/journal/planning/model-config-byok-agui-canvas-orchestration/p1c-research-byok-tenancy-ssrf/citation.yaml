@@ -1,0 +1,48 @@
+# Phase 1C — BYOK, tenancy, SSRF (external + repository)
+# Normative for bundle §B / §C refresh and §I.5 digest.
+
+sources:
+  - id: owasp-ssrf
+    title: OWASP SSRF Prevention Cheat Sheet
+    url: https://cheatsheetseries.owasp.org/cheatsheets/Server_Side_Request_Forgery_Prevention_Cheat_Sheet.html
+    description: Allowlists, deny lists, DNS resolution and IP validation, redirects, defense in depth for server-side fetch to user-influenced URLs.
+
+  - id: litellm-virtual-keys
+    title: LiteLLM Virtual Keys
+    url: https://docs.litellm.ai/docs/proxy/virtual_keys
+    description: Multi-tenant API key abstraction, budgets, and model access groups as a reference pattern for org vs user key precedence.
+
+  - id: openrouter-byok
+    title: OpenRouter BYOK
+    url: https://openrouter.ai/docs/use-cases/byok
+    description: End-user supplied keys and routing implications when platform vs customer keys coexist.
+
+  - id: cloudflare-workers-fetch
+    title: Cloudflare Workers fetch API
+    url: https://developers.cloudflare.com/workers/runtime-apis/fetch/
+    description: Outbound HTTP from Workers; same trust boundaries as other server runtimes for SSRF when URLs are user-controlled.
+
+  - id: SRC-BYOK-VAULT
+    type: codebase
+    path: worker/api/controllers/modelConfig/byokHelper.ts
+    note: loadByokKeysFromUserVault, getUserProviderStatus, vault stub per user id
+
+  - id: SRC-BYOK-TEMPLATES
+    type: codebase
+    path: worker/types/secretsTemplates.ts
+    note: getBYOKTemplates filters category byok; provider list for vault-backed BYOK
+
+  - id: SRC-PROVIDERS-TEST
+    type: codebase
+    path: worker/api/controllers/modelProviders/controller.ts
+    note: testProvider direct baseUrl + GET /models; CRUD 503
+
+  - id: SRC-SECRETS-TESTS
+    type: codebase
+    path: test/worker/services/secrets/
+    note: Encryption hierarchy and vault behavior (MEK/UMK/DEK) documented in CLAUDE.md; tests exercise store contracts
+
+inferred:
+  - claim: No organization/agency tenancy in worker TypeScript for model policy
+    basis: Same ripgrep as p1a — agency|superAdmin|super_admin|tenant in worker/**/*.ts — zero matches (2026-04-04)
+    confidence: high for searched patterns
