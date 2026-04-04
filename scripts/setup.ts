@@ -60,7 +60,7 @@ class SetupManager {
 	});
 
 	constructor() {
-		console.log('🚀 VibeSDK Development Setup');
+		console.log('🚀 LANDiBUILD development setup');
 		console.log('============================\n');
 	}
 
@@ -1788,7 +1788,7 @@ class SetupManager {
 			}
 		}
 
-		console.log('\n✨ Happy coding with VibeSDK! ✨');
+		console.log('\n✨ Happy coding with LANDiBUILD! ✨');
 	}
 
 	private async updateWorkerConfiguration(): Promise<void> {

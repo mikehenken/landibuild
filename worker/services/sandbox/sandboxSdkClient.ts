@@ -708,7 +708,7 @@ export class SandboxSdkClient extends BaseSandboxService {
                     failed: parseResult.placeholders.map(p => ({
                         placeholder: p.placeholder,
                         resourceType: p.resourceType,
-                        error: 'Missing Cloudflare credentials',
+                        error: 'Missing deployment credentials',
                         binding: p.binding
                     })),
                     replacements: {},
@@ -1875,7 +1875,7 @@ export class SandboxSdkClient extends BaseSandboxService {
             
             // Step 7: Deploy using pure function
             const useDispatch = target === 'platform';
-            this.logger.info('Deploying to Cloudflare', { target });
+            this.logger.info('Deploying to production Workers', { target });
             
             if (useDispatch) {
                 if (!('DISPATCH_NAMESPACE' in env)) {

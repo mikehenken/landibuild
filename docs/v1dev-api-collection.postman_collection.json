@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "V1 Dev API Collection - Complete",
-    "description": "Comprehensive API collection for V1 Dev platform - AI-powered webapp generator with Cloudflare Workers backend. Includes OAuth setup, CSRF protection, and all endpoints with proper authentication.",
+    "description": "Comprehensive API collection for LANDiBUILD — AI-powered webapp generator with a Workers backend. Includes OAuth setup, CSRF protection, and authenticated endpoints.",
     "version": "1.0.0",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },

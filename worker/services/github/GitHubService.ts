@@ -283,10 +283,10 @@ export class GitHubService {
             await git.commit({
                 fs,
                 dir: '/',
-                message: 'docs: Add Cloudflare deploy button to README',
+                message: 'docs: Add Workers deploy button to README',
                 author: { 
-                    name: 'vibesdk-bot', 
-                    email: 'bot@vibesdk.com',
+                    name: 'landibuild-bot', 
+                    email: 'bot@landi.build',
                     timestamp: Math.floor(Date.now() / 1000)
                 }
             });
@@ -309,7 +309,10 @@ export class GitHubService {
      */
     private static isSystemGeneratedCommit(message: string): boolean {
         const normalized = GitHubService.normalizeCommitMessage(message);
-        return normalized.startsWith('docs: Add Cloudflare deploy button');
+        return (
+            normalized.startsWith('docs: Add Workers deploy button') ||
+            normalized.startsWith('docs: Add Cloudflare deploy button')
+        );
     }
 
     /**

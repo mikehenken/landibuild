@@ -1,0 +1,26 @@
+{
+	"study_id": "landibuild-whitelabel-platform-research",
+	"workflow_name": "landibuild-coordinator-whitelabel-research",
+	"workspace": "c:\\Users\\mikeh\\Projects\\landi\\landibuild",
+	"completed_at": "2026-04-03",
+	"duration_note": "coordinator round: parallel-cli search x3, extract x2, readonly landing-editor explore",
+	"agent_trace": {
+		"subagents": ["shell", "explore"],
+		"tasks": [
+			"parallel-cli search (whitelabel, saas branding, github fork) via cmd.exe + PYTHONUTF8=1",
+			"parallel-cli extract vibesdk GitHub + README",
+			"readonly explore landing-editor agency settings and branding stack"
+		]
+	},
+	"artifact_paths": {
+		"synthesis_markdown": "landi-labs/studies/Platform-Research/whitelabel-synthesis-landibuild.md",
+		"parallel_cli_json": [
+			"landi-labs/studies/Platform-Research/vibesdk-whitelabel-search-1.json",
+			"landi-labs/studies/Platform-Research/vibesdk-saas-branding-search-2.json",
+			"landi-labs/studies/Platform-Research/vibesdk-github-fork-search-3.json",
+			"landi-labs/studies/Platform-Research/vibesdk-github-extract.json",
+			"landi-labs/studies/Platform-Research/vibesdk-readme-extract.json"
+		],
+		"registry": "landi-labs/studies/registry.json"
+	}
+}

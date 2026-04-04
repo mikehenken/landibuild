@@ -153,7 +153,7 @@
         "TEMPLATES_REPOSITORY": "https://github.com/cloudflare/vibesdk-templates",
         "ALLOWED_EMAIL": "mikehenken@gmail.com",
         "DISPATCH_NAMESPACE": "landibuild-default-namespace",
-        "ENABLE_READ_REPLICAS": "true",
+        "ENABLE_READ_REPLICAS": "false",
         "CLOUDFLARE_AI_GATEWAY": "landibuild-gateway",
         "PLATFORM_CAPABILITIES": {
             "features": {
@@ -161,10 +161,10 @@
                     "enabled": true
                 },
                 "presentation": {
-                    "enabled": false
+                    "enabled": true
                 },
                 "general": {
-                    "enabled": false
+                    "enabled": true
                 }
             },
             "version": "1.0.0"

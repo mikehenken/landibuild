@@ -1,0 +1,13 @@
+{
+	"version": "1",
+	"experiments": [
+		{
+			"id": "landibuild-whitelabel-platform-research",
+			"name": "LANDiBUILD whitelabel and agency branding platform research",
+			"path": "landi-labs/studies/Platform-Research/",
+			"initiatedFrom": "coordinator-user-request-2026-04-03",
+			"status": "complete",
+			"primaryArtifact": "landi-labs/studies/Platform-Research/whitelabel-synthesis-landibuild.md"
+		}
+	]
+}

@@ -31,7 +31,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useAuth } from '@/contexts/auth-context';
-import { useNavigate } from 'react-router';
+import { useLocation, useNavigate } from 'react-router';
 import { cn } from '@/lib/utils';
 import {
 	Tooltip,
@@ -149,6 +149,7 @@ function AppMenuItem({
 export function AppSidebar() {
 	const { user } = useAuth();
 	const navigate = useNavigate();
+	const { pathname } = useLocation();
 	const [searchQuery, setSearchQuery] = React.useState('');
 	const [expandedGroups, setExpandedGroups] = React.useState<string[]>([
 		'apps',
@@ -207,11 +208,44 @@ export function AppSidebar() {
 				)}
 			>
 				<SidebarContent className="mt-2">
+					<div className="flex w-full justify-center px-2 pb-3 pt-1">
+						<TooltipProvider delayDuration={0}>
+							<Tooltip>
+								<TooltipTrigger asChild>
+									<button
+										type="button"
+										onClick={() => navigate('/')}
+										className={cn(
+											'rounded-md outline-none transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-accent/40',
+											isCollapsed ? 'p-1' : 'px-2 py-1',
+										)}
+										aria-label="LANDiBUILD home"
+									>
+										<img
+											src="/logobuild.png"
+											alt=""
+											aria-hidden
+											className={cn(
+												'object-contain object-center dark:brightness-110',
+												isCollapsed ? 'h-8 w-8 max-w-8' : 'h-9 w-auto max-w-[min(100%,9rem)]',
+											)}
+											width={isCollapsed ? 32 : 144}
+											height={36}
+										/>
+									</button>
+								</TooltipTrigger>
+								<TooltipContent side="right" className="ml-2">
+									LANDiBUILD
+								</TooltipContent>
+							</Tooltip>
+						</TooltipProvider>
+					</div>
+
 					{/* Build Button */}
 					<SidebarGroup>
 						<SidebarGroupContent>
 	
-							{location.pathname !== '/' && (
+							{pathname !== '/' && (
 								<div
 									className={cn(
 										isCollapsed ? ' pr-2' : 'px-1',

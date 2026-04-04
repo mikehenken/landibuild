@@ -1,5 +1,10 @@
 # AGENTS.md
 
+This will become part of landi platform https://landi.build
+Primary landi.build codebase is in ~/Projects/landi/landing-editor 
+The rest live in ~/Projects/landi/landi-docs, ~/Projects/landi/landi-ui, ~/Projects/landi/landi-infra, ~/Projects/landi/landi-ai-orchestrator
+
+
 ## Build/Test/Lint Commands
 - **Build:** `npm run build` (tsc + vite)
 - **Typecheck:** `npm run typecheck`

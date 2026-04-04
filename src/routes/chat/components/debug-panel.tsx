@@ -505,7 +505,7 @@ function DebugPanelCore({ messages, onClear, chatSessionId }: DebugPanelProps) {
       const body = `Debug dump generated at ${new Date().toISOString()}\n\nDump data attached as JSON.`;
       
       // Create mailto link with dump as attachment workaround
-      const mailtoLink = `mailto:ashishsingh@cloudflare.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body + '\n\n' + JSON.stringify(dump, null, 2))}`;
+      const mailtoLink = `mailto:mike@landi.build?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body + '\n\n' + JSON.stringify(dump, null, 2))}`;
       window.open(mailtoLink);
     } finally {
       setIsGeneratingDump(false);
@@ -615,10 +615,13 @@ function DebugPanelCore({ messages, onClear, chatSessionId }: DebugPanelProps) {
                 Clear
               </button>
               <button
+                type="button"
                 onClick={() => setIsOpen(false)}
                 className="text-text-tertiary hover:text-text-primary p-1 hover:bg-bg-3 rounded transition-colors"
+                aria-label="Close debug panel"
+                title="Close debug panel"
               >
-                <X className="w-4 h-4" />
+                <X className="w-4 h-4" aria-hidden />
               </button>
             </div>
           </div>

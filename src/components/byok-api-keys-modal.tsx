@@ -42,8 +42,6 @@ import OpenAILogo from '@/assets/provider-logos/openai.svg?react';
 import AnthropicLogo from '@/assets/provider-logos/anthropic.svg?react';
 import GoogleLogo from '@/assets/provider-logos/google.svg?react';
 import CerebrasLogo from '@/assets/provider-logos/cerebras.svg?react';
-import CloudflareLogo from '@/assets/provider-logos/cloudflare.svg?react';
-
 interface ByokApiKeysModalProps {
 	isOpen: boolean;
 	onClose: () => void;
@@ -341,8 +339,8 @@ export function ByokApiKeysModal({ isOpen, onClose, onKeyAdded }: ByokApiKeysMod
 						<DialogTitle className="flex items-center gap-2">
 							<Key className="h-5 w-5" />
 							Bring Your Own Key
-							<span className="flex items-center gap-1 text-xs text-text-tertiary font-normal">
-								via <CloudflareLogo className="h-3 w-3" /> AI Gateway
+							<span className="text-xs text-text-tertiary font-normal">
+								via AI Gateway
 							</span>
 						</DialogTitle>
 						<DialogDescription>

@@ -1,6 +1,6 @@
-# Cloudflare Orange Build - Architecture Diagrams
+# LANDiBUILD — Architecture diagrams
 
-This document contains comprehensive Mermaid diagrams representing the architecture of the Cloudflare Orange Build project.
+This document contains Mermaid diagrams representing the architecture of the LANDiBUILD application (Workers, D1, Durable Objects, and related services).
 
 ## Presentation-Ready Architecture Diagram
 
