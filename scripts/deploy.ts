@@ -533,11 +533,8 @@ class CloudflareDeploymentManager {
 				console.warn(
 					'⚠️  Store this token securely and set CLOUDFLARE_AI_GATEWAY_TOKEN for future deployments.',
 				);
-				if (!process.env.CI) {
-					console.warn(`   ${newToken}`);
-				} else {
-					console.warn('   (Token value suppressed because CI=true)');
-				}
+				// Never print the raw token value; log only the ID so it can be looked up in the dashboard.
+				console.warn(`   Token ID: ${tokenData.result.id} — retrieve the value from the Cloudflare dashboard.`);
 
 				// Initialize separate AI Gateway SDK instance
 				this.aiGatewayCloudflare = new Cloudflare({
@@ -1730,6 +1727,7 @@ class CloudflareDeploymentManager {
 			'GOOGLE_AI_STUDIO_API_KEY',
 			'OPENROUTER_API_KEY',
 			'GROQ_API_KEY',
+			'WORKERS_API_KEY',
 			'GOOGLE_CLIENT_SECRET',
 			'GOOGLE_CLIENT_ID',
 			'GITHUB_CLIENT_ID',
@@ -2116,8 +2114,10 @@ class CloudflareDeploymentManager {
 	}
 }
 
-// Main execution
-if (import.meta.url === `file://${process.argv[1]}`) {
+// Main execution — use import.meta.main (Bun) so the guard works cross-platform.
+// import.meta.url vs `file://${process.argv[1]}` does not match on Windows (drive-letter paths differ).
+if (import.meta.main) {
+	console.log('🧡 Starting Cloudflare Orange Build deployment...');
 	const deployer = new CloudflareDeploymentManager();
 	deployer.deploy().catch((error) => {
 		console.error('Unexpected error:', error);

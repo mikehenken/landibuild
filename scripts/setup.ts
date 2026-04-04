@@ -390,7 +390,8 @@ class SetupManager {
 			2: { name: 'Anthropic', key: 'ANTHROPIC_API_KEY', provider: 'anthropic' },
 			3: { name: 'Google AI Studio', key: 'GOOGLE_AI_STUDIO_API_KEY', provider: 'google-ai-studio' },
 			4: { name: 'Cerebras', key: 'CEREBRAS_API_KEY', provider: 'cerebras' },
-			5: { name: 'OpenRouter', key: 'OPENROUTER_API_KEY', provider: 'openrouter' }
+			5: { name: 'OpenRouter', key: 'OPENROUTER_API_KEY', provider: 'openrouter' },
+			6: { name: 'Workers', key: 'WORKERS_API_KEY', provider: 'workers' }
 		};
 
 		console.log('\n🔑 API Key Configuration');
@@ -1141,7 +1142,7 @@ class SetupManager {
 		'JWT_SECRET', 'ENTROPY_KEY', 'ENVIRONMENT', 'SECRETS_ENCRYPTION_KEY',
 		'MAX_SANDBOX_INSTANCES', 'SANDBOX_INSTANCE_TYPE', 'CUSTOM_DOMAIN', 'CUSTOM_PREVIEW_DOMAIN',
 		'ALLOCATION_STRATEGY', 'GITHUB_EXPORTER_CLIENT_ID', 'GITHUB_EXPORTER_CLIENT_SECRET',
-		'CF_ACCESS_ID', 'CF_ACCESS_SECRET', 'SENTRY_DSN'
+		'CF_ACCESS_ID', 'CF_ACCESS_SECRET', 'SENTRY_DSN', 'WORKERS_API_KEY'
 	]);
 
 	private parseWorkerConfiguration(): Set<string> {
@@ -1204,6 +1205,7 @@ class SetupManager {
 			'CUSTOM_DOMAIN', 'ENVIRONMENT', 'CLOUDFLARE_API_TOKEN', 'CLOUDFLARE_ACCOUNT_ID',
 			'CLOUDFLARE_AI_GATEWAY_TOKEN', 'CLOUDFLARE_AI_GATEWAY_URL',
 			'ANTHROPIC_API_KEY', 'OPENAI_API_KEY', 'GOOGLE_AI_STUDIO_API_KEY', 'OPENROUTER_API_KEY', 'GROQ_API_KEY',
+			'WORKERS_API_KEY',
 			'GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET', 'GITHUB_CLIENT_ID', 'GITHUB_CLIENT_SECRET',
 			'GITHUB_EXPORTER_CLIENT_ID', 'GITHUB_EXPORTER_CLIENT_SECRET',
 			'JWT_SECRET', 'WEBHOOK_SECRET'
@@ -1247,7 +1249,7 @@ class SetupManager {
 
 		// Provider specific secrets
 		content += '# Provider specific secrets\n';
-		const providerVars = ['ANTHROPIC_API_KEY', 'OPENAI_API_KEY', 'GOOGLE_AI_STUDIO_API_KEY', 'OPENROUTER_API_KEY', 'GROQ_API_KEY'];
+		const providerVars = ['ANTHROPIC_API_KEY', 'OPENAI_API_KEY', 'GOOGLE_AI_STUDIO_API_KEY', 'OPENROUTER_API_KEY', 'GROQ_API_KEY', 'WORKERS_API_KEY'];
 		for (const varName of providerVars) {
 			if (this.config.devVars[varName]) {
 				content += `${varName}="${this.config.devVars[varName]}"\n`;
@@ -1343,6 +1345,7 @@ class SetupManager {
 			'CUSTOM_DOMAIN', 'ENVIRONMENT', 'CLOUDFLARE_API_TOKEN', 'CLOUDFLARE_ACCOUNT_ID',
 			'CLOUDFLARE_AI_GATEWAY_TOKEN', 'CLOUDFLARE_AI_GATEWAY_URL',
 			'ANTHROPIC_API_KEY', 'OPENAI_API_KEY', 'GOOGLE_AI_STUDIO_API_KEY', 'OPENROUTER_API_KEY', 'GROQ_API_KEY',
+			'WORKERS_API_KEY',
 			'GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET', 'GITHUB_CLIENT_ID', 'GITHUB_CLIENT_SECRET',
 			'GITHUB_EXPORTER_CLIENT_ID', 'GITHUB_EXPORTER_CLIENT_SECRET',
 			'JWT_SECRET', 'WEBHOOK_SECRET'
@@ -1371,7 +1374,7 @@ class SetupManager {
 
 		// Provider specific secrets
 		content += '# Provider specific secrets\n';
-		const providerVars = ['ANTHROPIC_API_KEY', 'OPENAI_API_KEY', 'GOOGLE_AI_STUDIO_API_KEY', 'OPENROUTER_API_KEY', 'GROQ_API_KEY'];
+		const providerVars = ['ANTHROPIC_API_KEY', 'OPENAI_API_KEY', 'GOOGLE_AI_STUDIO_API_KEY', 'OPENROUTER_API_KEY', 'GROQ_API_KEY', 'WORKERS_API_KEY'];
 		for (const varName of providerVars) {
 			if (this.config.prodVars[varName]) {
 				content += `${varName}="${this.config.prodVars[varName]}"\n`;
