@@ -9,6 +9,8 @@ lerna-debug.log*
 
 node_modules
 dist
+!packages/landi-header/dist/
+!packages/landi-header/dist/**
  dist-ssr
  .tmp
 *.tsbuildinfo

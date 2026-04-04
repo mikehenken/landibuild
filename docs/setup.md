@@ -172,7 +172,7 @@ You can route Google/GitHub login through **Supabase Auth** instead of direct Wo
 
 **CSP:** The app meta CSP already allows `connect-src` to `https:`; no change is required for typical Supabase hosts unless you tighten CSP later.
 
-**landi-ui header:** If you depend on `@landi/header` via `file:../landi-ui/packages/header`, clone `landi-ui` next to this repo and run `npm run build` in `packages/header` before `npm install` here.
+**@landi/header:** Vendored under `packages/landi-header` so CI (Cloudflare) can install without a sibling `landi-ui` clone. To refresh the bundle after upstream changes, see `packages/landi-header/README.md`.
 
 ### Docker Requirement
 

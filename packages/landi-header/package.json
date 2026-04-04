@@ -1,0 +1,25 @@
+{
+	"name": "@landi/header",
+	"version": "1.0.0",
+	"description": "Vendored platform header web component (built bundle). Sync from landi-ui packages/header when updating.",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/mikehenken/landi-ui.git",
+		"directory": "packages/header"
+	},
+	"type": "module",
+	"main": "./dist/index.js",
+	"types": "./dist/index.d.ts",
+	"exports": {
+		".": {
+			"import": "./dist/index.js",
+			"types": "./dist/index.d.ts"
+		}
+	},
+	"files": [
+		"dist"
+	],
+	"scripts": {
+		"build": "echo \"Run build in landi-ui packages/header, then copy dist/ here — see README.md\""
+	}
+}
