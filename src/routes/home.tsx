@@ -1,10 +1,8 @@
 import { useRef, useState, useEffect, useMemo } from 'react';
 import { ArrowRight, Info } from 'react-feather';
-import { useNavigate } from 'react-router';
+import { useNavigate, useSearchParams } from 'react-router';
 import { useAuth } from '@/contexts/auth-context';
-import { ProjectModeSelector, type ProjectModeOption } from '../components/project-mode-selector';
 import { MAX_AGENT_QUERY_LENGTH, SUPPORTED_IMAGE_MIME_TYPES, type ProjectType } from '@/api-types';
-import { useFeature } from '@/features';
 import { useAuthGuard } from '../hooks/useAuthGuard';
 import { usePaginatedApps } from '@/hooks/use-paginated-apps';
 import { AnimatePresence, LayoutGroup, motion } from 'framer-motion';
@@ -18,39 +16,26 @@ import { toast } from 'sonner';
 
 export default function Home() {
 	const navigate = useNavigate();
+	const [searchParams] = useSearchParams();
 	const { requireAuth } = useAuthGuard();
 	const textareaRef = useRef<HTMLTextAreaElement>(null);
-	const [projectMode, setProjectMode] = useState<ProjectType>('app');
+	
+	// Initialize projectMode from URL if present, otherwise default to 'app'
+	const initialMode = (searchParams.get('mode') as ProjectType) || 'app';
+	const [projectMode, setProjectMode] = useState<ProjectType>(initialMode);
+
+	// Update projectMode if URL changes
+	useEffect(() => {
+		const mode = searchParams.get('mode') as ProjectType;
+		if (mode) {
+			setProjectMode(mode);
+		} else {
+			setProjectMode('app');
+		}
+	}, [searchParams]);
+
 	const [query, setQuery] = useState('');
 	const { user } = useAuth();
-	const { isLoadingCapabilities, capabilities, getEnabledFeatures } = useFeature();
-
-	const modeOptions = useMemo<ProjectModeOption[]>(() => {
-		if (isLoadingCapabilities || !capabilities) return [];
-		return getEnabledFeatures().map((def) => ({
-			id: def.id,
-			label:
-				def.id === 'presentation'
-					? 'Slides'
-					: def.id === 'general'
-						? 'General'
-						: 'App',
-			description: def.description,
-		}));
-	}, [capabilities, getEnabledFeatures, isLoadingCapabilities]);
-
-	const showModeSelector = modeOptions.length > 1;
-
-	useEffect(() => {
-		if (isLoadingCapabilities) return;
-		if (modeOptions.length === 0) {
-			if (projectMode !== 'app') setProjectMode('app');
-			return;
-		}
-		if (!modeOptions.some((m) => m.id === projectMode)) {
-			setProjectMode(modeOptions[0].id);
-		}
-	}, [isLoadingCapabilities, modeOptions, projectMode]);
 
 	const { images, addImages, removeImage, clearImages, isProcessing } = useImageUpload({
 		onError: (error) => {
@@ -167,34 +152,7 @@ export default function Home() {
 	const discoverLinkRef = useRef<HTMLDivElement>(null);
 
 	return (
-		<div className="relative flex flex-col items-center size-full">
-			{/* Dotted background pattern - extends to full viewport */}
-			<div className="fixed inset-0 text-accent z-0 opacity-20 pointer-events-none">
-				<svg width="100%" height="100%">
-					<defs>
-						<pattern
-							id=":S2:"
-							viewBox="-6 -6 12 12"
-							patternUnits="userSpaceOnUse"
-							width="12"
-							height="12"
-						>
-							<circle
-								cx="0"
-								cy="0"
-								r="1"
-								fill="currentColor"
-							></circle>
-						</pattern>
-					</defs>
-					<rect
-						width="100%"
-						height="100%"
-						fill="url(#:S2:)"
-					></rect>
-				</svg>
-			</div>
-			
+		<div className="relative flex flex-col items-center size-full bg-[#121212]">
 			<LayoutGroup>
 				<div className="rounded-md w-full max-w-2xl overflow-hidden">
 					<motion.div
@@ -204,9 +162,11 @@ export default function Home() {
 							"px-6 p-8 flex flex-col items-center z-10",
 							discoverReady ? "mt-48" : "mt-[20vh] sm:mt-[24vh] md:mt-[28vh]"
 						)}>
-						<h1 className="text-shadow-sm text-shadow-red-200 dark:text-shadow-red-900 text-accent font-medium leading-[1.1] tracking-tight text-5xl w-full mb-4 bg-clip-text bg-gradient-to-r from-text-primary to-text-primary/90">
-							What should we build today?
-						</h1>
+						<img
+							src="/landibuild-logo.png"
+							alt="LANDiBUILD"
+							className="h-16 md:h-20 w-auto object-contain mb-8 dark:brightness-110"
+						/>
 
 						<form
 							method="POST"
@@ -215,7 +175,7 @@ export default function Home() {
 								const query = textareaRef.current!.value;
 								handleCreateApp(query, projectMode);
 							}}
-							className="flex z-10 flex-col w-full min-h-[150px] bg-bg-4 border border-accent/30 dark:border-accent/50 dark:bg-bg-2 rounded-[18px] shadow-textarea p-5 transition-all duration-200"
+							className="flex z-10 flex-col w-full min-h-[150px] bg-[#1f1f1f] rounded-[18px] shadow-textarea p-5 transition-all duration-200"
 						>
 							<div 
 								className={clsx(
@@ -257,22 +217,8 @@ export default function Home() {
 									</div>
 								)}
 							</div>
-							<div
-								className={clsx(
-									'flex items-center mt-4 pt-1',
-									showModeSelector ? 'justify-between' : 'justify-end',
-								)}
-							>
-								{showModeSelector && (
-									<ProjectModeSelector
-										value={projectMode}
-										onChange={setProjectMode}
-										modes={modeOptions}
-										className="flex-1"
-									/>
-								)}
-
-								<div className={clsx('flex items-center gap-2', showModeSelector && 'ml-4')}>
+							<div className="flex items-center mt-4 pt-1 justify-end">
+								<div className="flex items-center gap-2">
 									<ImageUploadButton
 										onFilesSelected={addImages}
 										disabled={isProcessing}
@@ -545,4 +491,4 @@ export const CurvedArrow: React.FC<ArrowProps> = ({
 			</g>
 		</svg>
 	);
-};
+}

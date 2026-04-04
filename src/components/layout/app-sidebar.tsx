@@ -1,19 +1,22 @@
 import React from 'react';
 import {
-	Users,
 	Settings,
 	Plus,
-	ChevronRight,
 	Search,
 	Globe,
 	Lock,
 	Users2,
 	Bookmark,
-	// LayoutGrid,
-	Compass,
+	PanelLeftClose,
+	PanelLeftOpen,
+	FileText,
+	MonitorPlay,
+	TerminalSquare,
+	Clock,
+	Smartphone,
 } from 'lucide-react';
 import './sidebar-overrides.css';
-import { useRecentApps, useFavoriteApps, useApps } from '@/hooks/use-apps';
+import { useRecentApps } from '@/hooks/use-apps';
 import {
 	Sidebar,
 	SidebarContent,
@@ -26,21 +29,18 @@ import {
 	SidebarMenuAction,
 	SidebarSeparator,
 	SidebarFooter,
+	SidebarHeader,
 	useSidebar,
 } from '@/components/ui/sidebar';
-import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useAuth } from '@/contexts/auth-context';
-import { useLocation, useNavigate } from 'react-router';
+import { useNavigate } from 'react-router';
 import { cn } from '@/lib/utils';
-import {
-	Tooltip,
-	TooltipContent,
-	TooltipProvider,
-	TooltipTrigger,
-} from '@/components/ui/tooltip';
 import { formatDistanceToNow, isValid } from 'date-fns';
 import { AppActionsDropdown } from '@/components/shared/AppActionsDropdown';
+
+import { ThemeToggle } from '../theme-toggle';
+import { AuthButton } from '../auth/auth-button';
 
 interface App {
 	id: string;
@@ -50,15 +50,6 @@ interface App {
 	updatedAtFormatted?: string;
 	visibility: 'private' | 'team' | 'board' | 'public';
 	isFavorite?: boolean;
-}
-
-interface Board {
-	id: string;
-	name: string;
-	slug: string;
-	memberCount: number;
-	appCount: number;
-	iconUrl?: string | null;
 }
 
 // Reusable AppMenuItem component for consistent app display
@@ -109,8 +100,8 @@ function AppMenuItem({
 							)}
 
 							<div className="relative flex-1 min-w-0 overflow-hidden">
-								<span className="font-medium flex justify-start  items-center  gap-2 text-text-primary/80 whitespace-nowrap">
-									<span className="text-ellipsis w-fit overflow-hidden">
+								<span className="font-medium flex justify-start items-center gap-2 text-text-primary/80 whitespace-nowrap">
+									<span className="text-ellipsis w-fit overflow-hidden text-[calc(1em+0.15em)]">
 										{app.title}{' '}
 									</span>
 									<div className="flex-shrink-0 min-w-6">
@@ -148,33 +139,14 @@ function AppMenuItem({
 
 export function AppSidebar() {
 	const { user } = useAuth();
+	const isLoggedIn = Boolean(user);
 	const navigate = useNavigate();
-	const { pathname } = useLocation();
-	const [searchQuery, setSearchQuery] = React.useState('');
-	const [expandedGroups, setExpandedGroups] = React.useState<string[]>([
-		'apps',
-		'boards',
-	]);
-	const { state, setOpen } = useSidebar();
-	const isCollapsed = state === 'collapsed';
+	const { state, openMobile, isMobile, toggleSidebar } = useSidebar();
+	// Mobile uses Sheet + openMobile; desktop uses open via state (offcanvas hides panel when "collapsed").
+	const isCollapsed = isMobile ? !openMobile : state === 'collapsed';
 
 	// Fetch real data from API
-	const { apps: recentApps, moreAvailable } = useRecentApps();
-	const { apps: favoriteApps } = useFavoriteApps();
-	const { apps: allApps, loading: allAppsLoading } = useApps();
-
-	const boards: Board[] = []; // Remove mock boards
-
-	// Search functionality - filter all apps based on search query
-	const searchResults = React.useMemo(() => {
-		if (!searchQuery.trim()) return [];
-
-		return allApps.filter((app) =>
-			app.title.toLowerCase().includes(searchQuery.toLowerCase().trim()),
-		);
-	}, [allApps, searchQuery]);
-
-	const isSearching = searchQuery.trim().length > 0;
+	const { apps: recentApps } = useRecentApps();
 
 	const getVisibilityIcon = (visibility: App['visibility']) => {
 		switch (visibility) {
@@ -189,454 +161,207 @@ export function AppSidebar() {
 		}
 	};
 
-	const toggleGroup = (group: string) => {
-		setExpandedGroups((prev) =>
-			prev.includes(group)
-				? prev.filter((g) => g !== group)
-				: [...prev, group],
-		);
-	};
-
-	if (!user) return;
-
 	return (
-		<>
-			<Sidebar
-				collapsible="icon"
-				className={cn(
-					'bg-bg-2 transition-all duration-300 ease-in-out',
+		<Sidebar
+			collapsible="offcanvas"
+			className={cn('bg-[#161817] transition-all duration-300 ease-in-out')}
+		>
+			<SidebarHeader className={cn("flex items-center p-4 relative", isCollapsed ? "justify-center" : "flex-row justify-center")}>
+				{!isCollapsed && (
+					<button
+						type="button"
+						onClick={() => navigate('/')}
+						className="rounded-md outline-none transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-accent/40 flex items-center justify-center"
+						aria-label="LANDiBUILD home"
+					>
+						<img src="/logo-red.png" alt="LANDI" className="h-8" />
+					</button>
 				)}
-			>
-				<SidebarContent className="mt-2">
-					<div className="flex w-full justify-center px-2 pb-3 pt-1">
-						<TooltipProvider delayDuration={0}>
-							<Tooltip>
-								<TooltipTrigger asChild>
-									<button
-										type="button"
-										onClick={() => navigate('/')}
-										className={cn(
-											'rounded-md outline-none transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-accent/40',
-											isCollapsed ? 'p-1' : 'px-2 py-1',
-										)}
-										aria-label="LANDiBUILD home"
-									>
-										<img
-											src="/logobuild.png"
-											alt=""
-											aria-hidden
-											className={cn(
-												'object-contain object-center dark:brightness-110',
-												isCollapsed ? 'h-8 w-8 max-w-8' : 'h-9 w-auto max-w-[min(100%,9rem)]',
-											)}
-											width={isCollapsed ? 32 : 144}
-											height={36}
-										/>
-									</button>
-								</TooltipTrigger>
-								<TooltipContent side="right" className="ml-2">
-									LANDiBUILD
-								</TooltipContent>
-							</Tooltip>
-						</TooltipProvider>
-					</div>
+				<button
+					onClick={toggleSidebar}
+					className={cn(
+						"p-1.5 rounded-md text-text-tertiary hover:text-text-primary hover:bg-[#2a2a2a] transition-colors",
+						isCollapsed ? "mt-2" : "absolute right-4"
+					)}
+				>
+					{isCollapsed ? <PanelLeftOpen className="h-5 w-5" /> : <PanelLeftClose className="h-5 w-5" />}
+				</button>
+			</SidebarHeader>
 
-					{/* Build Button */}
+			<SidebarContent className="text-[calc(1em+0.15em)]">
+				<div className={cn("mb-4", isCollapsed ? "px-2" : "px-3")}>
+					<button
+						className={cn(
+							'flex items-center justify-between font-medium hover:opacity-90 transition-opacity rounded-xl text-text-primary bg-[#2a2a2a] border border-[#3a3a3a]',
+							isCollapsed ? 'w-10 h-10 mx-auto p-0 justify-center' : 'w-full px-3 py-2.5'
+						)}
+						onClick={() => navigate('/')}
+					>
+						<div className="flex items-center gap-2">
+							<Plus className={cn("h-4 w-4", !isCollapsed && "text-text-primary")} />
+							{!isCollapsed && (
+								<span className="text-[calc((1em+0.15em)*0.85)] font-medium">New Chat</span>
+							)}
+						</div>
+						{!isCollapsed && (
+							<div className="flex items-center gap-1 text-xs text-text-tertiary font-mono bg-[#1a1a1a] px-1.5 py-0.5 rounded border border-[#3a3a3a]">
+								<span>Ctrl</span>
+								<span>K</span>
+							</div>
+						)}
+					</button>
+				</div>
+
+				<ScrollArea className="flex-1 px-2">
 					<SidebarGroup>
 						<SidebarGroupContent>
-	
-							{pathname !== '/' && (
-								<div
-									className={cn(
-										isCollapsed ? ' pr-2' : 'px-1',
-									)}
-								>
-									<TooltipProvider delayDuration={0}>
-										<Tooltip>
-											<TooltipTrigger asChild>
-												<button
-													className={cn(
-														'group flex w-full border-[0.5px] border-bg-2 items-center gap-2 font-medium hover:opacity-80 hover:cursor-pointer p-2 rounded-md cursor-hand text-text-secondary hover:text-text-primary',
-														isCollapsed
-															? 'justify-center bg-accent'
-															: 'justify-start bg-accent',
-													)}
-													onClick={() => {
-														// Collapse sidebar when starting a new build
-														if (!isCollapsed) {
-															setOpen(false);
-														}
-														navigate('/');
-													}}
-												>
-													<Plus className="h-4 w-4 text-neutral-50" />
-													{!isCollapsed && (
-														<span className="font-medium text-neutral-50">
-															New build
-														</span>
-													)}
-												</button>
-											</TooltipTrigger>
-										</Tooltip>
-									</TooltipProvider>
-								</div>
-							)}
+							<SidebarMenu>
+								<SidebarMenuItem>
+									<SidebarMenuButton
+										onClick={() => window.open('https://landi.build', '_blank')}
+										tooltip="Websites"
+										className="group hover:bg-[#2a2a2a]"
+									>
+										<Globe className="h-4 w-4 text-text-tertiary group-hover:text-text-primary" />
+										{!isCollapsed && <span className="text-[calc(1em+0.15em)]">Websites</span>}
+									</SidebarMenuButton>
+								</SidebarMenuItem>
+								<SidebarMenuItem>
+									<SidebarMenuButton
+										onClick={() => window.open('https://docs.landi.build', '_blank')}
+										tooltip="Docs"
+										className="group hover:bg-[#2a2a2a]"
+									>
+										<FileText className="h-4 w-4 text-text-tertiary group-hover:text-text-primary" />
+										{!isCollapsed && <span className="text-[calc(1em+0.15em)]">Docs</span>}
+									</SidebarMenuButton>
+								</SidebarMenuItem>
+								<SidebarMenuItem>
+									<SidebarMenuButton
+										onClick={() => navigate('/?mode=presentation')}
+										tooltip="Slides"
+										className="group hover:bg-[#2a2a2a]"
+									>
+										<MonitorPlay className="h-4 w-4 text-text-tertiary group-hover:text-text-primary" />
+										{!isCollapsed && <span className="text-[calc(1em+0.15em)]">Slides</span>}
+									</SidebarMenuButton>
+								</SidebarMenuItem>
+								<SidebarMenuItem>
+									<SidebarMenuButton
+										onClick={() => navigate('/?mode=research')}
+										tooltip="Deep Research"
+										className="group hover:bg-[#2a2a2a]"
+									>
+										<Search className="h-4 w-4 text-text-tertiary group-hover:text-text-primary" />
+										{!isCollapsed && <span className="text-[calc(1em+0.15em)]">Deep Research</span>}
+									</SidebarMenuButton>
+								</SidebarMenuItem>
+								<SidebarMenuItem>
+									<SidebarMenuButton
+										onClick={() => navigate('/')}
+										tooltip="Landi Code"
+										className="group hover:bg-[#2a2a2a]"
+									>
+										<TerminalSquare className="h-4 w-4 text-text-tertiary group-hover:text-text-primary" />
+										{!isCollapsed && <span className="text-[calc(1em+0.15em)]">Landi Code</span>}
+									</SidebarMenuButton>
+								</SidebarMenuItem>
+								<SidebarMenuItem>
+									<SidebarMenuButton
+										onClick={() => window.open('https://claw.landi.build', '_blank')}
+										tooltip="Landi Claw"
+										className="group hover:bg-[#2a2a2a] flex items-center justify-between w-full"
+									>
+										<div className="flex items-center gap-2">
+											<TerminalSquare className="h-4 w-4 text-text-tertiary group-hover:text-text-primary" />
+											{!isCollapsed && <span className="text-[calc(1em+0.15em)]">Landi Claw</span>}
+										</div>
+										{!isCollapsed && (
+											<span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-[#2a2a2a] text-text-tertiary border border-[#3a3a3a]">
+												Beta
+											</span>
+										)}
+									</SidebarMenuButton>
+								</SidebarMenuItem>
+							</SidebarMenu>
 						</SidebarGroupContent>
 					</SidebarGroup>
 
-					{!isCollapsed && (
-						<ScrollArea className="flex-1 px-1 relative">
-							{/* Gradient fade overlay for app names at sidebar edge */}
-							<div className="absolute inset-y-0 right-0 w-8 bg-gradient-to-l from-bg-2 to-transparent pointer-events-none z-10"></div>
-							{/* Navigation */}
-							<SidebarGroup>
-								{expandedGroups.includes('apps') && (
-									<SidebarGroupContent>
-										{/* Search */}
-										<div className="relative bg-bg-3 mb-4 mt-2">
-											<Search className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-text-tertiary" />
-											<Input
-												placeholder="Search apps..."
-												value={searchQuery}
-												onChange={(e) =>
-													setSearchQuery(
-														e.target.value,
-													)
-												}
-												className="h-10 w-full pl-8 placeholder:text-primary/40"
-											/>
-										</div>
-										<SidebarMenu>
-											{isSearching ? (
-												// Search Results
-												<>
-													{allAppsLoading ? (
-														<SidebarMenuItem>
-															<div className="flex items-center justify-center py-4">
-																<div className="text-sm text-text-tertiary">
-																	Searching...
-																</div>
-															</div>
-														</SidebarMenuItem>
-													) : searchResults.length >
-													  0 ? (
-														<>
-															<SidebarMenuItem>
-																<div className="px-2 py-1 text-xs text-text-tertiary">
-																	Found{' '}
-																	{
-																		searchResults.length
-																	}{' '}
-																	app
-																	{searchResults.length !==
-																	1
-																		? 's'
-																		: ''}
-																</div>
-															</SidebarMenuItem>
-															{searchResults.map(
-																(app) => (
-																	<AppMenuItem
-																		key={
-																			app.id
-																		}
-																		app={
-																			app
-																		}
-																		onClick={(
-																			id,
-																		) =>
-																			navigate(
-																				`/app/${id}`,
-																			)
-																		}
-																		variant="recent"
-																		showActions={
-																			true
-																		}
-																		isCollapsed={
-																			isCollapsed
-																		}
-																		getVisibilityIcon={
-																			getVisibilityIcon
-																		}
-																	/>
-																),
-															)}
-														</>
-													) : (
-														<SidebarMenuItem>
-															<div className="flex items-center justify-center py-4">
-																<div className="text-sm text-text-tertiary">
-																	No apps
-																	found for "
-																	{
-																		searchQuery
-																	}
-																	"
-																</div>
-															</div>
-														</SidebarMenuItem>
-													)}
-												</>
-											) : (
-												// Normal Recent Apps View
-												<>
-													{recentApps.map((app) => (
-														<AppMenuItem
-															key={app.id}
-															app={app}
-															onClick={(id) =>
-																navigate(
-																	`/app/${id}`,
-																)
-															}
-															variant="recent"
-															showActions={true}
-															isCollapsed={
-																isCollapsed
-															}
-															getVisibilityIcon={
-																getVisibilityIcon
-															}
-														/>
-													))}
-													{moreAvailable && (
-														<SidebarMenuItem>
-															<SidebarMenuButton
-																onClick={() =>
-																	navigate(
-																		'/apps',
-																	)
-																}
-																tooltip="View all apps"
-																className="text-text-tertiary hover:text-text-primary view-all-button"
-															>
-																<ChevronRight className="h-4 w-4" />
-																{!isCollapsed && (
-																	<span className="font-medium text-text-primary/80">
-																		View all
-																		apps →
-																	</span>
-																)}
-															</SidebarMenuButton>
-														</SidebarMenuItem>
-													)}
-												</>
-											)}
-										</SidebarMenu>
-									</SidebarGroupContent>
+					<SidebarSeparator className="my-2 mx-4" />
+
+					<SidebarGroup>
+						<SidebarGroupLabel className="flex items-center gap-2 text-sm font-medium text-text-primary px-2 mb-2">
+							<Clock className="h-4 w-4 text-text-tertiary" />
+							{!isCollapsed && <span className="text-[calc(1em+0.15em)]">Chat History</span>}
+						</SidebarGroupLabel>
+						<SidebarGroupContent>
+							<SidebarMenu>
+								{isLoggedIn ? (
+									recentApps.map((app) => (
+										<AppMenuItem
+											key={app.id}
+											app={app}
+											onClick={(id) => navigate(`/app/${id}`)}
+											variant="recent"
+											showActions={true}
+											isCollapsed={isCollapsed}
+											getVisibilityIcon={getVisibilityIcon}
+										/>
+									))
+								) : (
+									!isCollapsed && (
+										<SidebarMenuItem>
+											<p className="px-2 py-1 text-xs text-text-tertiary">
+												Sign in to see chat history.
+											</p>
+										</SidebarMenuItem>
+									)
 								)}
-							</SidebarGroup>
+							</SidebarMenu>
+						</SidebarGroupContent>
+					</SidebarGroup>
 
-							{/* Favorites */}
-							{favoriteApps.length > 0 && (
-								<>
-									<SidebarSeparator />
-									<SidebarGroup className='mt-4'>
-										<SidebarGroupLabel
-											className={cn(
-												'flex items-center gap-2 text-md text-text-primary',
-												isCollapsed &&
-													'justify-center px-0',
-											)}
-										>
-											{!isCollapsed && 'Bookmarked'}
-											<Bookmark className="h-5 w-5 fill-yellow-500 text-yellow-500" />
-											
-										</SidebarGroupLabel>
-										<SidebarGroupContent>
-											<SidebarMenu>
-												{favoriteApps.map((app) => (
-													<AppMenuItem
-														key={app.id}
-														app={app}
-														onClick={(id) =>
-															navigate(
-																`/app/${id}`,
-															)
-														}
-														showActions={true}
-														isCollapsed={
-															isCollapsed
-														}
-														getVisibilityIcon={
-															getVisibilityIcon
-														}
-													/>
-												))}
-											</SidebarMenu>
-										</SidebarGroupContent>
-									</SidebarGroup>
-								</>
-							)}
-
-							{/* Boards */}
-							{boards.length > 0 && (
-								<>
-									<SidebarSeparator />
-									<SidebarGroup>
-										<SidebarGroupLabel
-											className={cn(
-												'flex items-center cursor-pointer hover:text-text-primary transition-colors',
-												isCollapsed
-													? 'justify-center px-0'
-													: 'justify-between',
-											)}
-											onClick={() =>
-												toggleGroup('boards')
-											}
-										>
-											{isCollapsed ? (
-												<TooltipProvider
-													delayDuration={0}
-												>
-													<Tooltip>
-														<TooltipTrigger>
-															<Users className="h-4 w-4" />
-														</TooltipTrigger>
-														<TooltipContent
-															side="right"
-															className="ml-2"
-														>
-															My Boards
-														</TooltipContent>
-													</Tooltip>
-												</TooltipProvider>
-											) : (
-												<>
-													<div className="flex items-center gap-2">
-														<Users className="h-4 w-4" />
-														<span>My Boards</span>
-													</div>
-													<ChevronRight
-														className={cn(
-															'h-4 w-4 transition-transform',
-															expandedGroups.includes(
-																'boards',
-															) && 'rotate-90',
-														)}
-													/>
-												</>
-											)}
-										</SidebarGroupLabel>
-										{expandedGroups.includes('boards') && (
-											<SidebarGroupContent>
-												<SidebarMenu>
-													{boards.map((board) => (
-														<SidebarMenuItem
-															key={board.id}
-														>
-															<SidebarMenuButton
-																onClick={() =>
-																	navigate(
-																		`/boards/${board.slug}`,
-																	)
-																}
-																tooltip={
-																	board.name
-																}
-																className="board-item-button"
-															>
-																<div
-																	className={cn(
-																		'rounded-lg flex-shrink-0 flex items-center justify-center transition-colors',
-																		'h-8 w-8',
-																		isCollapsed
-																			? 'bg-sidebar-accent'
-																			: 'bg-sidebar-accent/50',
-																	)}
-																>
-																	<Users2 className="h-4 w-4 text-sidebar-accent-foreground" />
-																</div>
-																{!isCollapsed && (
-																	<div className="flex-1 min-w-0">
-																		<p className="text-sm font-medium truncate">
-																			{
-																				board.name
-																			}
-																		</p>
-																		<p className="text-xs text-text-tertiary truncate">
-																			{
-																				board.memberCount
-																			}{' '}
-																			members
-																			•{' '}
-																			{
-																				board.appCount
-																			}{' '}
-																			apps
-																		</p>
-																	</div>
-																)}
-															</SidebarMenuButton>
-														</SidebarMenuItem>
-													))}
-													<SidebarMenuItem>
-														<SidebarMenuButton
-															onClick={() =>
-																navigate(
-																	'/boards',
-																)
-															}
-															tooltip="Browse all boards"
-															className="text-text-tertiary hover:text-text-primary view-all-button"
-														>
-															<Plus className="h-4 w-4" />
-															{!isCollapsed && (
-																<span className="font-medium text-text-primary/80 ml-2">
-																	Browse all
-																	boards
-																</span>
-															)}
-														</SidebarMenuButton>
-													</SidebarMenuItem>
-												</SidebarMenu>
-											</SidebarGroupContent>
-										)}
-									</SidebarGroup>
-								</>
-							)}
-						</ScrollArea>
-					)}
-				</SidebarContent>
-
-				<SidebarFooter>
-					{user && (
+					<SidebarGroup className="mt-auto pt-4">
 						<SidebarMenu>
 							<SidebarMenuItem>
 								<SidebarMenuButton
-									id="discover-link"
-									onClick={() => navigate('/discover')}
-									tooltip="Discover"
-									className="group hover:opacity-80 hover:cursor-pointer hover:bg-bg-1/50 transition-all duration-200"
+									onClick={() => window.open('https://landi.build/mobile', '_blank')}
+									tooltip="Mobile App"
+									className="group hover:bg-[#2a2a2a]"
 								>
-									<Compass className="h-6 w-6 text-text-primary/60 group-hover:text-primary/80 transition-colors" />
-									{!isCollapsed && (
-										<span className="text-text-primary/80 font-medium group-hover:text-primary transition-colors">
-											Discover
-										</span>
-									)}
-								</SidebarMenuButton>
-							</SidebarMenuItem>
-							<SidebarMenuItem>
-								<SidebarMenuButton
-									onClick={() => navigate('/settings')}
-									tooltip="Settings"
-									className="group hover:opacity-80 hover:cursor-pointer hover:bg-bg-1/50 transition-all duration-200"
-								>
-									<Settings className="h-6 w-6 text-text-primary/60 group-hover:text-primary/80 transition-colors" />
-									{!isCollapsed && (
-										<span className="font-medium text-text-primary/80 group-hover:text-primary transition-colors">
-											Settings
-										</span>
-									)}
+									<Smartphone className="h-4 w-4 text-text-tertiary group-hover:text-text-primary" />
+									{!isCollapsed && <span className="text-[calc(1em+0.15em)]">Mobile App</span>}
 								</SidebarMenuButton>
 							</SidebarMenuItem>
 						</SidebarMenu>
-					)}
-				</SidebarFooter>
-			</Sidebar>
-		</>
+					</SidebarGroup>
+				</ScrollArea>
+			</SidebarContent>
+
+			<SidebarFooter className="p-3">
+				<SidebarMenu>
+					<SidebarMenuItem className="flex items-center gap-2 mb-2 px-2">
+						<ThemeToggle />
+						{isLoggedIn ? (
+							<button
+								type="button"
+								onClick={() => navigate('/settings')}
+								className="p-1.5 rounded-md text-text-tertiary hover:text-text-primary hover:bg-[#2a2a2a] transition-colors"
+								aria-label="Settings"
+							>
+								<Settings className="h-5 w-5" />
+							</button>
+						) : null}
+					</SidebarMenuItem>
+					<SidebarMenuItem className="flex w-full flex-col gap-2">
+						{!isCollapsed && !isLoggedIn ? (
+							<AuthButton className="w-full justify-center" />
+						) : (
+							<AuthButton variant="sidebar" isCollapsed={isCollapsed} />
+						)}
+					</SidebarMenuItem>
+				</SidebarMenu>
+			</SidebarFooter>
+		</Sidebar>
 	);
 }

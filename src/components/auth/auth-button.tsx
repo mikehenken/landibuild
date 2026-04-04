@@ -4,7 +4,7 @@
  */
 
 import { useState } from 'react';
-import { LogIn, LogOut, Settings } from 'lucide-react';
+import { LogIn, LogOut, Settings, ChevronDown } from 'lucide-react';
 import { useNavigate } from 'react-router';
 import { motion, AnimatePresence } from 'framer-motion';
 import clsx from 'clsx';
@@ -24,9 +24,11 @@ import { Skeleton } from '../ui/skeleton';
 
 interface AuthButtonProps {
 	className?: string;
+	variant?: 'default' | 'sidebar';
+	isCollapsed?: boolean;
 }
 
-export function AuthButton({ className }: AuthButtonProps) {
+export function AuthButton({ className, variant = 'default', isCollapsed = false }: AuthButtonProps) {
 	const {
 		user,
 		isAuthenticated,
@@ -63,9 +65,8 @@ export function AuthButton({ className }: AuthButtonProps) {
 					isOpen={showLoginModal}
 					onClose={() => setShowLoginModal(false)}
 					onLogin={(provider) => {
-						// For backward compatibility with original login interface
-						login(provider);
 						setShowLoginModal(false);
+						void login(provider);
 					}}
 					onEmailLogin={async (credentials) => {
 						await loginWithEmail(credentials);
@@ -74,8 +75,8 @@ export function AuthButton({ className }: AuthButtonProps) {
 						}
 					}}
 					onOAuthLogin={(provider) => {
-						login(provider);
 						setShowLoginModal(false);
+						void login(provider);
 					}}
 					onRegister={async (data) => {
 						await register(data);
@@ -106,24 +107,59 @@ export function AuthButton({ className }: AuthButtonProps) {
 	return (
 		<DropdownMenu>
 			<DropdownMenuTrigger asChild>
-				<Button
-					variant="ghost"
-					size="icon"
-					className="relative rounded-full hover:ring-2 hover:ring-primary/20 transition-all"
-				>
-					<Avatar className="h-8 w-8">
-						<AvatarImage
-							src={user.avatarUrl}
-							alt={user.displayName || user.email}
-						/>
-						<AvatarFallback className="bg-text-secondary/10 text-text-primary font-semibold">
-							{getInitials()}
-						</AvatarFallback>
-					</Avatar>
-					{user.emailVerified && (
-						<div className="absolute -bottom-1 -right-1 h-3 w-3 bg-green-500 rounded-full border-2 border-background" />
-					)}
-				</Button>
+				{variant === 'sidebar' ? (
+					<Button
+						variant="ghost"
+						className={clsx(
+							"w-full flex items-center justify-between hover:bg-[#2a2a2a] transition-all px-2 py-6",
+							isCollapsed ? "justify-center px-0" : ""
+						)}
+					>
+						<div className="flex items-center gap-2 overflow-hidden">
+							<Avatar className="h-8 w-8 shrink-0">
+								<AvatarImage
+									src={user.avatarUrl}
+									alt={user.displayName || user.email}
+								/>
+								<AvatarFallback className="bg-text-secondary/10 text-text-primary font-semibold">
+									{getInitials()}
+								</AvatarFallback>
+							</Avatar>
+							{!isCollapsed && (
+								<span className="text-sm font-medium text-text-primary truncate max-w-[80px]">
+									{user.displayName || user.email.split('@')[0]}
+								</span>
+							)}
+						</div>
+						{!isCollapsed && (
+							<div className="flex items-center gap-2 shrink-0">
+								<div className="text-xs font-medium bg-[#2a2a2a] text-text-primary px-2 py-1 rounded border border-[#3a3a3a]">
+									Upgrade
+								</div>
+								<ChevronDown className="h-4 w-4 text-text-tertiary" />
+							</div>
+						)}
+					</Button>
+				) : (
+					<Button
+						variant="ghost"
+						size="icon"
+						className="relative rounded-full hover:ring-2 hover:ring-primary/20 transition-all"
+					>
+						<Avatar className="h-8 w-8">
+							<AvatarImage
+								src={user.avatarUrl}
+								alt={user.displayName || user.email}
+							/>
+							<AvatarFallback className="bg-text-secondary/10 text-text-primary font-semibold">
+								{getInitials()}
+							</AvatarFallback>
+						</Avatar>
+						{user.emailVerified && (
+							<div className="absolute -bottom-1 -right-1 h-3 w-3 bg-green-500 rounded-full border-2 border-background" />
+						)}
+					</Button>
+				)}
 			</DropdownMenuTrigger>
 
 			<AnimatePresence>
