@@ -1,10 +1,10 @@
-# VibSDK Setup Guide
+# LANDiBUILD setup guide
 
-Local first time setup guide for VibSDK - get your AI coding platform running locally and also ready to be deployed. 
+Local first-time setup for LANDiBUILD — get the AI app builder running locally and ready to deploy.
 
 **Make sure to read through the entire guide for important notes, and have all the required information ready before starting.**
 
-**Important Note: Cloudflare WARP has been known to cause issues with anonymous Cloudflared tunnels used in local development. It may cause previews to not load. If you experience issues with local development previews, try disabling WARP (full mode) while working with VibSDK. You may use WARP in DNS only (1.1.1.1) mode**
+**Important note:** Cloudflare WARP has been known to cause issues with anonymous Cloudflared tunnels used in local development. It may cause previews to not load. If you experience issues with local development previews, try disabling WARP (full mode) while working with LANDiBUILD. You may use WARP in DNS only (1.1.1.1) mode.
 
 ## Prerequisites
 
@@ -26,7 +26,7 @@ Before getting started, make sure you have:
 
 ## Quick Start
 
-The fastest way to get VibSDK running is with our automated setup script:
+The fastest way to get LANDiBUILD running is with our automated setup script:
 
 ```bash
 # Bun is recommended for the projec instead of npm. First install bun if you don't have it already
@@ -146,6 +146,34 @@ The script will also ask for OAuth credentials:
 
 **If you don't provide OAuth credentials, by default at login, you will only be able to use email-based registration/login.**
 
+### Supabase Auth (optional)
+
+You can route Google/GitHub login through **Supabase Auth** instead of direct Worker OAuth. The browser completes OAuth with Supabase, then the SPA calls the Worker to verify the Supabase access token (JWT, HS256) and set the same httpOnly session cookies as legacy OAuth.
+
+**Supabase dashboard**
+
+- Enable **Google** and/or **GitHub** under Authentication → Providers.
+- Set **Site URL** to your app origin (e.g. `http://localhost:5173` for dev, production URL for prod).
+- Under **Redirect URLs**, allow your OAuth return path, e.g. `http://localhost:5173/auth/callback` and `https://<your-domain>/auth/callback`.
+
+**Vite (`.env.local` or `.env` — never commit secrets)**
+
+- Template: copy **`.env.example`** to `.env.local` and replace placeholders.
+- `VITE_USE_SUPABASE_AUTH=true` to turn on Supabase login in the UI.
+- `VITE_SUPABASE_URL` — project URL (same as `SUPABASE_URL` on the Worker).
+- `VITE_SUPABASE_ANON_KEY` — **anon** public key only (not the service role).
+
+**Worker (`.dev.vars` locally, `wrangler secret` in deployed environments)**
+
+- `USE_SUPABASE_AUTH=true`
+- `SUPABASE_URL` — same project URL as the client.
+- `SUPABASE_JWT_SECRET` — JWT secret from Supabase (Settings → API). Store with `npx wrangler secret put SUPABASE_JWT_SECRET` for remote; put the value in `.dev.vars` for local `wrangler dev` only.
+- Optional: `SUPABASE_OAUTH_GOOGLE` / `SUPABASE_OAUTH_GITHUB` — set to `false` or `0` to hide a provider when Supabase mode is on (defaults to enabled).
+
+**CSP:** The app meta CSP already allows `connect-src` to `https:`; no change is required for typical Supabase hosts unless you tighten CSP later.
+
+**landi-ui header:** If you depend on `@landi/header` via `file:../landi-ui/packages/header`, clone `landi-ui` next to this repo and run `npm run build` in `packages/header` before `npm install` here.
+
 ### Docker Requirement
 
 For local development with sandbox instances, Docker is required. Make sure Docker is installed and running on your machine before running the platform.
@@ -246,9 +274,9 @@ Visit your app at `http://localhost:5173`
 - **Preview URL not accessible**: Check if tunnel is still creating, or try refreshing the instance
 - **Multiple port exposure issues on macOS**: Use tunnels (`USE_TUNNEL_FOR_PREVIEW=true`) - this is the default
 
-**Deploy to Cloudflare Button Issues (Chat Interface)**:
+**Deploy button issues (chat interface)**:
 - **"Deploy button not working locally"**: Chat interface deploy button requires custom domain, initial deployment, and remote dispatch bindings
-- **"Dispatch namespace not found"**: Deploy your VibSDK project to Cloudflare at least once first
+- **"Dispatch namespace not found"**: Deploy your LANDiBUILD project to Cloudflare at least once first
 - **"Deploy fails with authentication error"**: Ensure your custom domain is properly configured and deployed
 - **Note**: This refers to deploying generated apps from the chat interface, not GitHub repository deployments
 
@@ -317,7 +345,7 @@ Alternatively, create `.prod.vars` manually based on `.dev.vars` but with:
 Once setup is complete:
 
 1. **Start developing** with `npm run dev`
-2. **Visit** `http://localhost:5173` to access VibSDK
+2. **Visit** `http://localhost:5173` to access LANDiBUILD
 3. **Try generating** your first AI-powered application
 4. **Deploy to production** when ready with `npm run deploy`
 
@@ -326,7 +354,7 @@ Once setup is complete:
 The setup script creates and modifies these files:
 
 ```
-vibesdk/
+landibuild/
 ├── .dev.vars              # Local development environment variables
 ├── .prod.vars             # Production environment variables (if configured)
 ├── wrangler.jsonc         # Updated with resource IDs and domain
@@ -337,7 +365,7 @@ vibesdk/
 
 ## Summary
 
-The VibSDK setup script provides a comprehensive, intelligent configuration experience:
+The LANDiBUILD setup script provides a comprehensive, intelligent configuration experience:
 
 ### **Key Features:**
 - **Simplified domain setup** - One-time domain configuration with clear feature implications
@@ -375,11 +403,11 @@ For any issues during setup, check the troubleshooting section above or refer to
 - **Timeouts**: Tunnel creation may timeout occasionally (this is normal)
 - **External dependency**: Requires internet connection and cloudflare.com access
 
-### **"Deploy to Cloudflare" Button Limitations (Chat Interface)**
+### **Deploy button limitations (chat interface)**
 
-The "Deploy to Cloudflare" button in the chat interface (for generated apps) has specific requirements for local development:
+The deploy button in the chat interface (for generated apps) has specific requirements for local development:
 
-> **Note**: This refers to the deployment button within the VibSDK platform's chat interface, not the GitHub repository deploy button.
+> **Note**: This refers to the deployment button within the LANDiBUILD chat interface, not the GitHub repository deploy button.
 
 **Requirements**:
 1. **Custom domain** must be properly configured during setup
@@ -390,9 +418,9 @@ The "Deploy to Cloudflare" button in the chat interface (for generated apps) has
 **Why These Requirements?**
 - The deploy feature uses Cloudflare's dispatch namespace system
 - Dispatch requires a running worker in your account to handle deployment requests
-- Local-only development isn't yet supported for this in vibesdk
+- Local-only development isn't yet supported for this flow
 
-**Current Status**: Making "Deploy to Cloudflare" work completely in local-only mode is not yet implemented.
+**Current status:** Making deploy-to-production work completely in local-only mode is not yet implemented.
 
 ### **Sandbox Instance Behavior**
 

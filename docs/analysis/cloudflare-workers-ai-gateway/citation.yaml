@@ -1,0 +1,80 @@
+# Citations for Cloudflare Workers AI + AI Gateway research (fetched 2026-04-04)
+# Primary authority: developers.cloudflare.com
+
+sources:
+  - id: workers-ai-pricing
+    title: Workers AI — Pricing
+    url: https://developers.cloudflare.com/workers-ai/platform/pricing/
+    scope: Neurons, free tier, per-model token/neuron table (includes all @cf IDs below)
+
+  - id: ai-gateway-pricing
+    title: AI Gateway — Pricing
+    url: https://developers.cloudflare.com/ai-gateway/reference/pricing/
+    scope: Free core features, persistent logs limits, Logpush overage
+
+  - id: ai-gateway-caching
+    title: AI Gateway — Caching
+    url: https://developers.cloudflare.com/ai-gateway/features/caching/
+    scope: Identical-request cache, latency/cost benefits, text+image, limitations
+
+  - id: ai-gateway-rate-limiting
+    title: AI Gateway — Rate limiting
+    url: https://developers.cloudflare.com/ai-gateway/features/rate-limiting/
+    scope: Request windows, 429 behavior, dashboard/API config
+
+  - id: ai-gateway-unified-billing
+    title: AI Gateway — Unified Billing
+    url: https://developers.cloudflare.com/ai-gateway/features/unified-billing/
+    scope: Credits, Cloudflare-managed keys, spend limits, supported providers
+
+  - id: ai-gateway-workers-ai-provider
+    title: AI Gateway — Workers AI provider
+    url: https://developers.cloudflare.com/ai-gateway/usage/providers/workersai/
+    scope: gateway URL rewrite, OpenAI-compatible paths for Workers AI, binding gateway options
+
+  - id: workers-ai-models-index
+    title: Workers AI — Models
+    url: https://developers.cloudflare.com/workers-ai/models/
+    scope: Catalog entry point
+
+  - id: model-kimi-k2-5
+    title: Workers AI model — kimi-k2.5
+    url: https://developers.cloudflare.com/workers-ai/models/kimi-k2.5/
+
+  - id: model-gpt-oss-120b
+    title: Workers AI model — gpt-oss-120b
+    url: https://developers.cloudflare.com/workers-ai/models/gpt-oss-120b/
+
+  - id: model-glm-4-7-flash
+    title: Workers AI model — glm-4.7-flash
+    url: https://developers.cloudflare.com/workers-ai/models/glm-4.7-flash/
+
+  - id: model-llama-4-scout
+    title: Workers AI model — llama-4-scout-17b-16e-instruct
+    url: https://developers.cloudflare.com/workers-ai/models/llama-4-scout-17b-16e-instruct/
+
+  - id: model-nemotron-3
+    title: Workers AI model — nemotron-3-120b-a12b
+    url: https://developers.cloudflare.com/workers-ai/models/nemotron-3-120b-a12b/
+
+  - id: model-flux-2-klein-9b
+    title: Workers AI model — flux-2-klein-9b
+    url: https://developers.cloudflare.com/workers-ai/models/flux-2-klein-9b/
+
+  - id: model-lucid-origin
+    title: Workers AI model — lucid-origin
+    url: https://developers.cloudflare.com/workers-ai/models/lucid-origin/
+
+  - id: changelog-flux-2-klein-9b
+    title: Changelog — FLUX.2 [klein] 9B on Workers AI
+    url: https://developers.cloudflare.com/changelog/2026-01-28-flux-2-klein-9b-workers-ai/
+
+  - id: changelog-glm-47
+    title: Changelog — GLM-4.7-Flash on Workers AI
+    url: https://developers.cloudflare.com/changelog/2026-02-13-glm-47-flash-workers-ai/
+
+model_id_verification:
+  note: >
+    Canonical Workers AI IDs use the @cf/{vendor}/{model} prefix as listed on each model page
+    and in the official pricing table (workers-ai-pricing). Slugs without @cf/ (e.g.
+    moonshotai/kimi-k2.5) are vendor/repo-style names; on Cloudflare they map to @cf/moonshotai/kimi-k2.5, etc.

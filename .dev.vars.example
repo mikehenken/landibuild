@@ -1,0 +1,64 @@
+# Local Wrangler / Vite dev secrets (copy to .dev.vars and fill in)
+#
+# If you deployed with "Deploy to Cloudflare" first and cloned the repo later:
+#   cp .dev.vars.example .dev.vars
+# Then paste values from Cloudflare Dashboard → Workers → your worker → Settings
+# (Secrets are not readable after save—you may need to re-enter them or run `bun run setup`.)
+#
+# Alternative: run `bun run setup` / `npm run setup` to generate .dev.vars interactively.
+
+# --- Required for local dev with remote Cloudflare resources ---
+CUSTOM_DOMAIN="localhost:5173"
+ENVIRONMENT="dev"
+
+CLOUDFLARE_API_TOKEN=""
+CLOUDFLARE_ACCOUNT_ID=""
+
+# AI Gateway (recommended)
+# Workers AI + OpenAI SDK: use your gateway "compat" base (same host Postman/curl uses before /chat/completions).
+# Example: https://gateway.ai.cloudflare.com/v1/<account_id>/<gateway_slug>/compat
+CLOUDFLARE_AI_GATEWAY_TOKEN=""
+# CLOUDFLARE_AI_GATEWAY_URL="https://gateway.ai.cloudflare.com/v1/<account_id>/<gateway_slug>/compat"
+# Workers AI via gateway: API token (cfut_...) used as Bearer for compat routes — set as WORKERS_API_KEY
+WORKERS_API_KEY=""
+
+# --- At least one AI provider (uncomment / set what you use) ---
+# ANTHROPIC_API_KEY=""
+# OPENAI_API_KEY=""
+GOOGLE_AI_STUDIO_API_KEY=""
+
+# --- Auth (generate strong random strings for local dev) ---
+JWT_SECRET=""
+WEBHOOK_SECRET=""
+
+# --- Optional: OAuth (leave commented if using email-only login) ---
+# GOOGLE_CLIENT_ID=""
+# GOOGLE_CLIENT_SECRET=""
+# GITHUB_CLIENT_ID=""
+# GITHUB_CLIENT_SECRET=""
+# GITHUB_EXPORTER_CLIENT_ID=""
+# GITHUB_EXPORTER_CLIENT_SECRET=""
+
+# --- Optional: Supabase Auth (Google/GitHub via Supabase; bridges to Worker session cookies) ---
+# When USE_SUPABASE_AUTH=true, login uses Supabase OAuth; the Worker verifies the Supabase JWT
+# and issues the app session. Do NOT put the service role key in the client—only anon key in Vite.
+# USE_SUPABASE_AUTH="true"
+# SUPABASE_URL="https://<project-ref>.supabase.co"
+# SUPABASE_OAUTH_GOOGLE="true"
+# SUPABASE_OAUTH_GITHUB="true"
+# JWT signing secret from Supabase Dashboard → Project Settings → API → JWT Secret (store as Worker secret):
+#   npx wrangler secret put SUPABASE_JWT_SECRET
+# SUPABASE_JWT_SECRET=""
+
+# --- Optional providers ---
+# OPENROUTER_API_KEY=""
+# GROQ_API_KEY=""
+# CEREBRAS_API_KEY=""
+# SERPAPI_KEY=""
+
+# --- Often set in production; uncomment if your worker expects them locally ---
+# SECRETS_ENCRYPTION_KEY=""
+# AI_PROXY_JWT_SECRET=""
+# ENTROPY_KEY=""
+# SANDBOX_SERVICE_API_KEY=""
+# USE_TUNNEL_FOR_PREVIEW=""

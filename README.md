@@ -1,35 +1,30 @@
-## 🧡 Cloudflare Vibe SDK
+## LANDiBUILD
 
-> **An open source full-stack AI webapp generator** – Deploy your own instance of Cloudflare VibeSDK, an AI vibe coding platform that you can run and customize yourself.
+> **Landi’s open-source AI app builder** — a full-stack generator you can self-host. Users describe what they want in natural language; agents plan, implement, preview, and deploy.
 
 <div align="center">
 
+## Live site
 
-## 🚀 Live Demo
+**[landi.build](https://landi.build)**
 
-**[build.cloudflare.dev](https://build.cloudflare.dev)**
+*LANDiBUILD is the Landi platform shell for this repository.*
 
-*Explore VibeSDK Build before deploying your own stack.*
+[![Deploy to Workers](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/cloudflare/vibesdk)
 
-[![Deploy to Cloudflare Workers](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/cloudflare/vibesdk)
+**Deploy flow:** The button targets the upstream Workers deploy template URL. For this fork, point the deploy URL at **your** GitHub remote after you publish it.
 
-**👆 Click to deploy your own instance!**
-
-*Follow the setup guide below to configure required services*
+*Follow [docs/setup.md](docs/setup.md) to configure required services.*
 
 </div>
 
-## Star History
-
-[![Star History Chart](https://api.star-history.com/svg?repos=cloudflare/vibesdk&type=Date)](https://www.star-history.com/#cloudflare/vibesdk&Date)
-
 ---
 
-## ✨ What is Cloudflare VibeSDK?
+## What is LANDiBUILD?
 
-Cloudflare VibeSDK is an open source AI vibe coding platform built on Cloudflare's developer platform. If you're building an AI-powered platform for building applications, this is a great example that you can deploy and customize to build the whole platform yourself. Once the platform is deployed, users can say what they want to build in natural language, and the AI agent will create and deploy the application. 
+LANDiBUILD is Landi’s branded distribution of an AI-powered app builder on the Cloudflare developer stack (Workers, D1, Durable Objects, AI Gateway, Containers). Fork and deploy it to run your own instance with your domain, models, and policies.
 
-**🌐 [Experience it live at build.cloudflare.dev](https://build.cloudflare.dev)** – Try it out before deploying your own instance!
+**Learn more:** [landi.build](https://landi.build)
 
 ## 🎯 Perfect For
 
@@ -53,9 +48,9 @@ Let your customers extend your product's functionality without learning your API
 🚀 **One-Click Deploy** – Deploy generated apps to Workers for Platforms  
 📦 **GitHub Integration** – Export code directly to your repositories  
 
-### 🏗️ Built on Cloudflare's Platform
+### Built on Cloudflare’s platform
 
-Cloudflare VibeSDK Build utilizes the full Cloudflare developer ecosystem:
+LANDiBUILD uses the Cloudflare developer ecosystem:
 
 - **Frontend**: React + Vite with modern UI components
 - **Backend**: Workers with Durable Objects for AI agents  
@@ -77,7 +72,7 @@ npm install @cf-vibesdk/sdk
 import { PhasicClient } from '@cf-vibesdk/sdk';
 
 const client = new PhasicClient({
-  baseUrl: 'https://build.cloudflare.dev',
+  baseUrl: 'https://your-landibuild-host.example',
   apiKey: process.env.VIBESDK_API_KEY!,
 });
 
@@ -95,7 +90,7 @@ session.close();
 
 ## 📋 Quick Deploy Checklist
 
-Before clicking "Deploy to Cloudflare", have these ready:
+Before running a Workers deploy, have these ready:
 
 ### ✅ Prerequisites
 - Cloudflare Workers Paid Plan
@@ -105,9 +100,9 @@ Before clicking "Deploy to Cloudflare", have these ready:
 ### 🔑 Required API Key
 - **Google Gemini API Key** - Get from [ai.google.dev](https://ai.google.dev)
 
-Once you click "Deploy to Cloudflare", you'll be taken to your Cloudflare dashboard where you can configure your VibeSDK deployment with these variables. 
+In the Cloudflare dashboard (or your CI pipeline), configure your LANDiBUILD deployment with these variables.
 
-[![Deploy to Cloudflare Workers](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/cloudflare/vibesdk)
+[![Deploy to Workers](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/cloudflare/vibesdk)
 
 ### 🔑 What you'll configure
 
@@ -132,7 +127,7 @@ Adjust the placeholder `abc`/`xyz` parts to match your domain. DNS propagation c
 
 ### 🏗️ Sandbox Instance Configuration (Optional)
 
-VibeSDK uses Cloudflare Containers to run generated applications in isolated environments. You can configure the container performance tier based on your needs and Cloudflare plan.
+LANDiBUILD uses Cloudflare Containers to run generated applications in isolated environments. You can configure the container performance tier based on your needs and Cloudflare plan.
 
 #### Available Instance Types
 
@@ -149,7 +144,7 @@ VibeSDK uses Cloudflare Containers to run generated applications in isolated env
 #### Configuration Options
 
 **Option A: Via Deploy Button (Recommended)**
-During the "Deploy to Cloudflare" flow, you can set the instance type as a **build variable**:
+During the Workers deploy flow, you can set the instance type as a **build variable**:
 - Variable name: `SANDBOX_INSTANCE_TYPE`
 - Recommended values:
   - **Standard/Paid users**: `standard-3` (default, best balance)
@@ -183,7 +178,7 @@ The `SANDBOX_INSTANCE_TYPE` controls:
 OAuth configuration is **not** shown on the initial deploy page. If you want user login features, you'll need to set this up after deployment:
 
 **How to Add OAuth After Deployment:**
-1. **Find your repository** in your GitHub/GitLab account (created by "Deploy to Cloudflare" flow) 
+1. **Find your repository** in your GitHub/GitLab account (created by your deploy flow)
 2. **Clone locally** and run `bun install`
 3. **Create `.dev.vars` and `.prod.vars` files** (see below for OAuth configuration)
 4. **Run `bun run deploy`** to update your deployment
@@ -203,7 +198,7 @@ OAuth configuration is **not** shown on the initial deploy page. If you want use
 **GitHub OAuth Setup:**
 1. GitHub → **Settings** → **Developer settings** → **OAuth Apps**
 2. Click **New OAuth App**
-3. Application name: `Cloudflare VibeSDK`
+3. Application name: `LANDiBUILD` (or your product name)
 4. Homepage URL: `https://your-worker-name.workers.dev`
 5. Authorization callback URL: `https://your-worker-name.workers.dev/api/auth/callback/github`
 6. Add to **both** `.dev.vars` (for local development) and `.prod.vars` (for deployment):
@@ -213,7 +208,7 @@ OAuth configuration is **not** shown on the initial deploy page. If you want use
    ```
 
 **GitHub Export OAuth Setup:**
-1. Create a separate GitHub OAuth app (e.g., `VibeSDK Export`)—do not reuse the login app above.
+1. Create a separate GitHub OAuth app (e.g., `LANDiBUILD Export`)—do not reuse the login app above.
 2. Authorization callback URL: `https://your-worker-name.workers.dev/api/github-exporter/callback` (or your custom domain equivalent).
 3. Add to **both** `.dev.vars` and `.prod.vars`:
    ```bash
@@ -249,7 +244,7 @@ graph TD
 
 ## 💡 Try These Example Prompts
 
-Want to see these prompts in action? **[Visit the live demo at build.cloudflare.dev](https://build.cloudflare.dev)** first, then try them on your own instance once deployed:
+Want to see these prompts in action? Try them on **[landi.build](https://landi.build)** or your own deployed instance:
 
 **🎮 Fun Apps**
 > "Create a todo list with drag and drop and dark mode"
@@ -307,7 +302,7 @@ export default {
 ```
 
 ### Iteration-based Code Generation
-Cloudflare VibeSDK generates apps in intelligent phases:
+LANDiBUILD generates apps in intelligent phases:
 
 1. **Planning Phase**: Analyzes requirements, creates file structure
 2. **Foundation Phase**: Generates package.json, basic setup files  
@@ -332,12 +327,12 @@ DNS updates made during setup, including the wildcard CNAME record described abo
 
 ### Quick Setup
 
-You can run VibeSDK locally by following these steps:
+You can run LANDiBUILD locally by following these steps:
 
 ```bash
 # Clone the repository
-git clone https://github.com/cloudflare/vibesdk.git
-cd vibesdk
+git clone <your-fork-url>
+cd landibuild
 
 # Install dependencies
 npm install  # or: bun install, yarn install, pnpm install
@@ -399,7 +394,7 @@ If you're deploying manually using `bun run deploy`, you **must** set these envi
 bun run dev
 ```
 
-Visit `http://localhost:5173` to access VibSDK locally.
+Visit `http://localhost:5173` to access LANDiBUILD locally.
 
 **For Production Deployment (.prod.vars):**
 ```bash
@@ -446,7 +441,7 @@ Example: If `MAX_SANDBOX_INSTANCES` is set both as an environment variable (`exp
 
 ## 🔒 Security & Privacy
 
-Cloudflare VibeSDK implements enterprise-grade security:
+LANDiBUILD implements enterprise-grade security:
 
 - 🔐 **Encrypted Secrets**: All API keys stored with Cloudflare encryption
 - 🏰 **Sandboxed Execution**: Generated apps run in completely isolated containers
@@ -505,7 +500,7 @@ Cloudflare VibeSDK implements enterprise-grade security:
 
 ## 🤝 Contributing
 
-Want to contribute to Cloudflare VibeSDK? Here's how:
+Want to contribute to LANDiBUILD? Here's how:
 
 1. **🍴 Fork** via the Deploy button (creates your own instance!)
 2. **💻 Develop** new features or improvements  

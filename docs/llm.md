@@ -1,8 +1,8 @@
-# LLM Developer Guide for vibesdk
+# LLM developer guide for LANDiBUILD
 
 > **📋 Meta-Instruction for AI Assistants:**
 > 
-> This document contains comprehensive architectural knowledge for **vibesdk** - an AI-powered full-stack app generation platform built on Cloudflare Workers with React.
+> This document contains comprehensive architectural knowledge for **LANDiBUILD** — an AI-powered full-stack app generation platform built on Cloudflare Workers with React. (Legacy references to “vibesdk” in paths and history below refer to the same codebase lineage.)
 >
 > **Your Responsibilities:**
 > 1. **Read this entire document** before making ANY changes

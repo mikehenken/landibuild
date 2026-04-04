@@ -1,0 +1,128 @@
+# Sources for cloudflare-workers-ai-comparison (research-analyst, 2026-04-04)
+# Prefer official Cloudflare Developers + primary model cards; blogs marked as vendor-reported.
+
+sources:
+  - id: cf-workers-ai-pricing
+    title: Cloudflare Workers AI — Pricing
+    url: https://developers.cloudflare.com/workers-ai/platform/pricing/
+    type: official_docs
+    accessed: '2026-04-04'
+    notes: Per-model neuron/token pricing; free 10k neurons/day; Kimi cached-input row.
+
+  - id: cf-workers-ai-models
+    title: Cloudflare Workers AI — Models
+    url: https://developers.cloudflare.com/workers-ai/models/
+    type: official_docs
+    accessed: '2026-04-04'
+    notes: Model catalog, capabilities (function calling, vision, reasoning), task types.
+
+  - id: cf-ai-gateway-pricing
+    title: Cloudflare AI Gateway — Pricing
+    url: https://developers.cloudflare.com/ai-gateway/reference/pricing/
+    type: official_docs
+    accessed: '2026-04-04'
+    notes: Core analytics/caching/rate limiting free; persistent logs tiers; Logpush overage.
+
+  - id: cf-ai-gateway-caching
+    title: Cloudflare AI Gateway — Caching
+    url: https://developers.cloudflare.com/ai-gateway/features/caching/
+    type: official_docs
+    accessed: '2026-04-04'
+    notes: Identical-request cache; text+image; cf-aig-* headers; volatile under concurrency.
+
+  - id: cf-ai-gateway-workers-ai-provider
+    title: Cloudflare AI Gateway — Workers AI provider
+    url: https://developers.cloudflare.com/ai-gateway/usage/providers/workersai/
+    type: official_docs
+    accessed: '2026-04-04'
+    notes: Gateway URL shape; OpenAI-compatible paths; binding gateway id/skipCache/cacheTtl.
+
+  - id: cf-changelog-flux2-klein-9b
+    title: 'Changelog: FLUX.2 [klein] 9B on Workers AI'
+    url: https://developers.cloudflare.com/changelog/2026-01-28-flux-2-klein-9b-workers-ai/
+    type: official_docs
+    accessed: '2026-04-04'
+
+  - id: cf-changelog-glm-47-flash
+    title: 'Changelog: GLM-4.7-Flash on Workers AI'
+    url: https://developers.cloudflare.com/changelog/2026-02-13-glm-47-flash-workers-ai/
+    type: official_docs
+    accessed: '2026-04-04'
+
+  - id: hf-glm-47-flash
+    title: 'Hugging Face — zai-org/GLM-4.7-Flash model card'
+    url: https://huggingface.co/zai-org/GLM-4.7-Flash
+    type: vendor_model_card
+    accessed: '2026-04-04'
+    notes: Vendor-reported benchmark table (SWE-bench Verified 59.2, LCB v6 64.0, etc.).
+
+  - id: nvidia-nemotron3-super-modelcard
+    title: NVIDIA Build — Nemotron 3 Super 120B model card
+    url: https://build.nvidia.com/nvidia/nemotron-3-super-120b-a12b/modelcard
+    type: vendor_model_card
+    accessed: '2026-04-04'
+    notes: >-
+      Vendor-reported benchmarks vs Qwen3.5-122B and GPT-OSS-120B; SWE-Bench (OpenHands) 60.47 vs 41.9;
+      LiveCodeBench v5 Nemotron 81.19 vs GPT-OSS 88.00; harness details in footnotes.
+
+  - id: moonshot-kimi-k25-blog
+    title: 'Moonshot AI — Kimi K2.5: Visual Agentic Intelligence'
+    url: https://www.kimi.com/blog/kimi-k2-5.html
+    type: vendor_blog
+    accessed: '2026-04-04'
+    notes: >-
+      SWE-Bench series via internally developed evaluation framework; SWE-Bench Verified 76.8 (Kimi column in table);
+      recommends official API for reproduction; KVV for third-party providers.
+
+  - id: moonshot-kimi-github
+    title: MoonshotAI/Kimi-K2.5 (GitHub)
+    url: https://github.com/moonshotai/Kimi-K2.5
+    type: vendor_repo
+    accessed: '2026-04-04'
+
+  - id: meta-llama4
+    title: Meta — Llama 4 models overview
+    url: https://llama.meta.com/models/llama-4/
+    type: vendor_marketing
+    accessed: '2026-04-04'
+    notes: LiveCodeBench figures for Scout vs Maverick cited on marketing page; verify against primary eval if disputing.
+
+  - id: openai-gpt-oss-paper
+    title: 'GPT-OSS model card (arXiv HTML)'
+    url: https://arxiv.org/html/2508.10925v1
+    type: technical_report
+    accessed: '2026-04-04'
+    notes: Open-weight gpt-oss family documentation; use for architecture/capabilities baseline.
+
+  - id: cf-model-kimi
+    title: Cloudflare Workers AI — kimi-k2.5 model page
+    url: https://developers.cloudflare.com/workers-ai/models/kimi-k2.5/
+    type: official_docs
+    accessed: '2026-04-04'
+
+  - id: cf-model-flux2-klein-9b
+    title: Cloudflare Workers AI — flux-2-klein-9b model page
+    url: https://developers.cloudflare.com/workers-ai/models/flux-2-klein-9b/
+    type: official_docs
+    accessed: '2026-04-04'
+
+  - id: cf-model-lucid-origin
+    title: Cloudflare Workers AI — lucid-origin model page
+    url: https://developers.cloudflare.com/workers-ai/models/lucid-origin/
+    type: official_docs
+    accessed: '2026-04-04'
+
+  - id: openai-images-api
+    title: OpenAI API — Images (reference)
+    url: https://platform.openai.com/docs/api-reference/images
+    type: vendor_api_docs
+    accessed: '2026-04-04'
+    notes: Contrast request/response shape with Workers AI image run endpoints.
+
+benchmark_caveats:
+  - >-
+    SWE-Bench / LiveCodeBench scores are not interchangeable across harnesses (OpenHands vs OpenCode vs vendor-internal tooling).
+  - >-
+    Workers AI may serve quantized or throughput-optimized variants; latency and exact behavior can differ from self-hosted reference weights.
+  - >-
+    Closed APIs (Claude, Gemini, GPT-5.x) move faster than public leaderboards; treat vendor tables as snapshots, not ordinals for all tasks.
