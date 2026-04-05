@@ -4,7 +4,7 @@ This document contains Mermaid diagrams representing the architecture of the LAN
 
 ## Presentation-Ready Architecture Diagram
 
-*Copy-paste this beautiful diagram directly into your slides*
+*Copy-paste this beautiful diagram directly into your  m*
 
 ```mermaid
 graph TB

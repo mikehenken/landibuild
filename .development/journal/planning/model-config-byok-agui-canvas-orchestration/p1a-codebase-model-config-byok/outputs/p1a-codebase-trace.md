@@ -1,21 +1,56 @@
-# Phase 1A — Config, BYOK, admin surfaces (code trace)
+# Phase 1A — Config, BYOK, admin surfaces (code trace) — REFRESH
 
 **Task:** `p1a-codebase-model-config-byok`  
 **Agent:** ai-engineer  
 **Repo:** `landibuild`  
-**Date:** 2026-04-04
+**Date:** 2026-04-04 (refresh: expanded citations, constraint matrix, recursion gap)
 
 This document traces `AGENT_CONFIG` through inference, user overrides, secrets/BYOK templates, and provider controllers. It separates **what exists today** from **what is missing** relative to plan goals 1–4 (goals 5–6 are out of scope for this task).
 
 ---
 
+## Today vs missing (summary)
+
+| Area | Today (verified) | Missing / weak |
+|------|------------------|----------------|
+| Default model bundles | Two static objects; `AGENT_CONFIG` picks one at module load from truthy `PLATFORM_MODEL_PROVIDERS` | No named bundles; comma-list in env not used for bundle selection (only in `byokHelper`) |
+| User overrides | D1 `user_model_configs`, merge in `ModelConfigService`, HTTP API, `resolveModelConfig` | No org/agency layer; no admin to edit defaults without redeploy |
+| BYOK at inference | `runtimeOverrides.userApiKeys` in `getApiKey`; vault load for **model test** only | WS `SESSION_INIT` disabled; DO `onStart` does not reload vault keys into `runtimeOverrides` |
+| Agency / super-admin | Per-user APIs only | No `agency` / `superAdmin` / `tenant` symbols in `worker/**/*.ts` (grep) |
+| Unified inference path | `executeInference` → `infer` with `runtimeOverrides` | `realtimeCodeFixer` diff fixer; **tool-recursion `infer` omits `runtimeOverrides`** |
+
+---
+
+## 0. `CodeGeneratorAgent` (`worker/agents/core/codingAgent.ts`)
+
+The production codegen Durable Object is **`CodeGeneratorAgent`** (not a separate `SimpleCodeGeneratorAgent` type in this file — the DO class name is `CodeGeneratorAgent`).
+
+**Today:** It wires WebSocket handling, behaviors (`PhasicCodingBehavior` / `AgenticCodingBehavior`), and on start reloads **merged** user model configs from D1 into the behavior. It does **not** load BYOK vault keys or re-apply HTTP `credentials` on restart.
+
+```42:44:worker/agents/core/codingAgent.ts
+export class CodeGeneratorAgent extends Agent<Env, AgentState> implements AgentInfrastructure<AgentState> {
+    public _logger: StructuredLogger | undefined;
+    private behavior!: BaseCodingBehavior<AgentState>;
+```
+
+```205:209:worker/agents/core/codingAgent.ts
+        const modelConfigService = new ModelConfigService(this.env);
+        const userConfigsRecord = await modelConfigService.getUserModelConfigs(this.state.metadata.userId);
+        this.behavior.setUserModelConfigs(userConfigsRecord);
+        this.logger().info(`Agent ${this.getAgentId()} session: ${this.state.sessionId} onStart: User configs loaded successfully`, {userConfigsRecord});
+```
+
+**Missing:** `setRuntimeOverrides` is never called from `onStart`; only `setUserModelConfigs`. Compare with HTTP bootstrap in `CodingAgentController` which sets both `userModelConfigs` (subset) and `runtimeOverrides` from `body.credentials`.
+
+---
+
 ## 1. Build-time defaults: `AGENT_CONFIG` and `PLATFORM_MODEL_PROVIDERS`
 
-### What it does today
+### Today
 
-- **`COMMON_AGENT_CONFIGS`** holds shared defaults for several actions (`screenshotAnalysis`, `realtimeCodeFixer`, `fastCodeFixer`, `templateSelection`).  
-- **`PLATFORM_AGENT_CONFIG`** and **`DEFAULT_AGENT_CONFIG`** are two full `AgentConfig` objects (multi-provider “platform” vs Kimi-heavy default).  
-- **`AGENT_CONFIG`** is chosen at **Worker module load** from `env.PLATFORM_MODEL_PROVIDERS` truthiness only: if the binding is any non-empty string, `PLATFORM_AGENT_CONFIG` is used; otherwise `DEFAULT_AGENT_CONFIG`. The **comma-separated list inside** `PLATFORM_MODEL_PROVIDERS` is **not** parsed here.
+- **`COMMON_AGENT_CONFIGS`:** `screenshotAnalysis`, `realtimeCodeFixer`, `fastCodeFixer`, `templateSelection` (`worker/agents/inferutils/config.ts:11-39`).
+- **`PLATFORM_AGENT_CONFIG`** vs **`DEFAULT_AGENT_CONFIG`:** full `AgentConfig` (`config.ts:56-195`).
+- **`AGENT_CONFIG`:** chosen at **Worker module load** — any **truthy** `env.PLATFORM_MODEL_PROVIDERS` string selects `PLATFORM_AGENT_CONFIG`; the **contents** of the comma-separated list are **not** read here.
 
 ```197:199:worker/agents/inferutils/config.ts
 export const AGENT_CONFIG: AgentConfig = env.PLATFORM_MODEL_PROVIDERS 
@@ -23,66 +58,49 @@ export const AGENT_CONFIG: AgentConfig = env.PLATFORM_MODEL_PROVIDERS
     : DEFAULT_AGENT_CONFIG;
 ```
 
-- **`AGENT_CONSTRAINTS`** restricts which `AIModels` values are allowed for a **subset** of `AgentActionKey` entries (`fastCodeFixer`, `realtimeCodeFixer`, `fileRegeneration`, `phaseGeneration`, `projectSetup`, `conversationalResponse`, `templateSelection`). Actions **without** a map entry (e.g. `blueprint`, `phaseImplementation`, `deepDebugger`, `agenticProjectBuilder`) have **no** constraint row and are treated as unconstrained in `validateAgentConstraints`.
+- **`PLATFORM_MODEL_PROVIDERS` (parsed):** `getPlatformEnabledProviders` splits on comma and merges with auto-detected `*_API_KEY` (`worker/api/controllers/modelConfig/byokHelper.ts:133-170`). This drives **which models are considered platform-available** for validation/UI — **not** which static `AGENT_CONFIG` object is active.
 
-```226:257:worker/agents/inferutils/config.ts
-export const AGENT_CONSTRAINTS: Map<AgentActionKey, AgentConstraintConfig> = new Map([
-	['fastCodeFixer', { ... }],
-	['realtimeCodeFixer', { ... }],
-	// ... other keys — not exhaustive over AgentConfig
-]);
-```
+- **`AGENT_CONSTRAINTS`:** only seven action keys are registered (`config.ts:226-257`). Other `AgentConfig` keys have **no** map entry → `validateAgentConstraints` treats them as unconstrained (`constraintHelper.ts:25-28`).
 
-### What is missing
+**Constraint coverage matrix**
 
-- No runtime or D1-driven **switch** between config “bundles”; only two static objects + env boolean-style gate.  
-- **`AGENT_CONFIG` selection** does not reflect the **same semantics** as `getPlatformEnabledProviders` (which **does** split `PLATFORM_MODEL_PROVIDERS` by comma).
+| `AgentActionKey` | In `AGENT_CONSTRAINTS`? |
+|------------------|-------------------------|
+| `fastCodeFixer` | Yes |
+| `realtimeCodeFixer` | Yes |
+| `fileRegeneration` | Yes (allows `AllModels`) |
+| `phaseGeneration` | Yes (allows `AllModels`) |
+| `projectSetup` | Yes (allows `AllModels`) |
+| `conversationalResponse` | Yes (allows `AllModels`) |
+| `templateSelection` | Yes (allows `AllModels`) |
+| `blueprint` | **No** |
+| `firstPhaseImplementation` | **No** |
+| `phaseImplementation` | **No** |
+| `screenshotAnalysis` | **No** |
+| `deepDebugger` | **No** |
+| `agenticProjectBuilder` | **No** |
+
+### Missing
+
+- No runtime or D1-driven **switch** between config bundles beyond the two static objects + env truthiness gate.  
+- **Semantic split:** `AGENT_CONFIG` branch ≠ `getPlatformEnabledProviders` parsing of the same env var name.
 
 ---
 
 ## 2. Per-user overrides: D1, API, merge precedence
 
-### What it does today
+### Today
 
-- Table **`user_model_configs`** (Drizzle `userModelConfigs` in `worker/database/schema.ts`) stores per-user, per-`agentActionName` overrides.  
-- **`ModelConfigService`** merges DB rows with `AGENT_CONFIG` defaults; user non-null fields win; constraints can force fallback to defaults (`mergeWithDefaults`, `applyConstraintsWithFallback`).
+- **`ModelConfigService.mergeWithDefaults` / `applyConstraintsWithFallback`** (`worker/database/services/ModelConfigService.ts:54-112`, `117-135`).  
+- **`ModelConfigController`** user-scoped HTTP; updates call `validateModelAccessForEnvironment` (`controller.ts:156-192`).  
+- **`resolveModelConfig`** precedence: user `ModelConfig` > `AGENT_CONFIG`, plus constraint checks (`infer.ts:28-95`).
 
-```54:77:worker/database/services/ModelConfigService.ts
-	private mergeWithDefaults(
-		userConfig: UserModelConfig | null,
-		agentActionName: AgentActionKey
-	): UserModelConfigWithMetadata {
-		const defaultConfig = AGENT_CONFIG[agentActionName];
-		// ...
-		return {
-			name: toAIModel(userConfig.modelName) ?? defaultConfig.name,
-			// ...
-			isUserOverride: true/false,
-		};
-	}
-```
+**HTTP session start** — only overrides with `isUserOverride` are passed in `inferenceContext.userModelConfigs`; `runtimeOverrides` from optional credentials:
 
-- **`ModelConfigController`** (`worker/api/controllers/modelConfig/controller.ts`) exposes CRUD-style HTTP for the authenticated **user** only (`context.user!`). Updates validate `validateModelAccessForEnvironment` against platform keys + user BYOK status.  
-- **`resolveModelConfig`** in `infer.ts`: precedence **user `ModelConfig` > `AGENT_CONFIG`**, then constraint checks on primary and fallback candidates.
-
-```28:46:worker/agents/inferutils/infer.ts
- * Precedence: userConfig > AGENT_CONFIG defaults
- */
-function resolveModelConfig(
-    agentActionName: AgentActionKey,
-    userConfig?: ModelConfig,
-): ModelConfig {
-    const defaultConfig = AGENT_CONFIG[agentActionName];
-    const merged: ModelConfig = {
-        name: userConfig?.name ?? defaultConfig.name,
-        // ...
-    };
-```
-
-- **Session start (HTTP):** `CodingAgentController.startCodeGeneration` loads merged configs and passes **only rows with `isUserOverride`** into `inferenceContext.userModelConfigs`, plus `runtimeOverrides` from optional `body.credentials` via `credentialsToRuntimeOverrides`.
-
-```114:134:worker/api/controllers/agent/controller.ts
+```114:136:worker/api/controllers/agent/controller.ts
             const userConfigsRecord = await modelConfigService.getUserModelConfigs(user.id);
+                                
+            // Extract only user-overridden configs, stripping metadata fields
             const userModelConfigs: Record<string, ModelConfig> = {};
             for (const [actionKey, mergedConfig] of Object.entries(userConfigsRecord)) {
                 if (mergedConfig.isUserOverride) {
@@ -90,36 +108,50 @@ function resolveModelConfig(
                     userModelConfigs[actionKey] = modelConfig;
                 }
             }
+
             const runtimeOverrides = credentialsToRuntimeOverrides(body.credentials);
+
             const inferenceContext = {
-                metadata: { agentId: agentId, userId: user.id },
+                metadata: {
+                    agentId: agentId,
+                    userId: user.id,
+                },
                 userModelConfigs,
                 runtimeOverrides,
-                // ...
-            };
+                enableRealtimeCodeFix: false, // This costs us too much, so disabled it for now
+                enableFastSmartCodeFix: false,
+            }
 ```
 
-- **DO restart / `onStart`:** `CodeGeneratorAgent.onStart` reloads **`getUserModelConfigs`** from D1 and calls `behavior.setUserModelConfigs(userConfigsRecord)` with the **full** merged record (including entries with `isUserOverride: false`). Effective inference still resolves per field; defaults align with `AGENT_CONFIG` when not overridden.
+**`getInferenceContext()` on the DO** rebuilds context per operation with **hardcoded** flags (not from initial HTTP context):
 
-```205:209:worker/agents/core/codingAgent.ts
-        const modelConfigService = new ModelConfigService(this.env);
-        const userConfigsRecord = await modelConfigService.getUserModelConfigs(this.state.metadata.userId);
-        this.behavior.setUserModelConfigs(userConfigsRecord);
+```342:352:worker/agents/core/behaviors/base.ts
+    protected getInferenceContext(): InferenceContext {
+        const controller = this.getOrCreateAbortController();
+        
+        return {
+            metadata: this.state.metadata,
+            enableFastSmartCodeFix: false,  // TODO: Do we want to enable it via some config?
+            enableRealtimeCodeFix: false,   // TODO: Do we want to enable it via some config?
+            abortSignal: controller.signal,
+            userModelConfigs: this.getUserModelConfigs(),
+            runtimeOverrides: this.getRuntimeOverrides(),
+        };
+    }
 ```
 
-### What is missing
-
-- **No agency- or tenant-scoped** config table or merge layer; only **user** + **build-time** defaults.  
-- **`runtimeOverrides` / BYOK keys** are **not** reloaded from the vault on `onStart`; they only exist if supplied at HTTP start. WebSocket path to set them is **commented out** (see §5).
+**Missing:** No tenant/agency merge. **`runtimeOverrides`** are not restored on DO restart unless something calls `setRuntimeOverrides` (only possible via commented WS path today). **Flag mismatch:** HTTP `inferenceContext` disables realtime fixer explicitly; DO `getInferenceContext` also forces false — so even if HTTP passed true, behavior would reset unless state carried flags (it does not).
 
 ---
 
 ## 3. Inference stack: `executeInference` → `infer` → keys and gateway
 
-### What it does today
+### Today
 
-- **`executeInference`** resolves model/fallback/temperature from `resolveModelConfig`, then calls **`infer`** in `core.ts` with `runtimeOverrides: context.runtimeOverrides`.  
-- **`getApiKey`** prefers `runtimeOverrides.userApiKeys[provider]`, else env `PROVIDER_API_KEY`, else gateway token behavior when using custom gateway URL.
+- **`executeInference`** merges config then calls **`infer`** with `runtimeOverrides: context.runtimeOverrides` (`infer.ts:157-220`).  
+- **`infer`** calls **`getConfigurationForModel`** with `runtimeOverrides` (`core.ts:619-624`).  
+- **`getApiKey`** order: `runtimeOverrides.userApiKeys[provider]` → `PROVIDER_API_KEY` env → gateway token path (`core.ts:277-305`).  
+- **`InferenceRuntimeOverrides` / `credentialsToRuntimeOverrides`** (`config.types.ts:513-556`).
 
 ```277:305:worker/agents/inferutils/core.ts
 async function getApiKey(
@@ -128,148 +160,170 @@ async function getApiKey(
 	_userId: string,
 	runtimeOverrides?: InferenceRuntimeOverrides,
 ): Promise<string> {
+    console.log("Getting API key for provider: ", provider);
+
     const runtimeKey = runtimeOverrides?.userApiKeys?.[provider];
     if (runtimeKey && isValidApiKey(runtimeKey)) {
         return runtimeKey;
     }
-    // ... env keys, then gateway token / CLOUDFLARE_AI_GATEWAY_TOKEN
+    // Fallback to environment variables
+    const providerKeyString = provider.toUpperCase().replaceAll('-', '_');
+    const envKey = `${providerKeyString}_API_KEY` as keyof Env;
+    let apiKey: string = env[envKey] as string;
+    // ...
 }
 ```
 
-- **`InferenceRuntimeOverrides`** and **`credentialsToRuntimeOverrides`** are defined in `config.types.ts` (SDK payload → runtime-only overrides, not persisted in DO state).
+### Missing / bug-shaped gap
 
-```513:556:worker/agents/inferutils/config.types.ts
-export type InferenceRuntimeOverrides = {
-	userApiKeys?: Record<string, string>;
-	aiGatewayOverride?: { baseUrl: string; token: string };
-};
-// ...
-export function credentialsToRuntimeOverrides(
-	credentials: CredentialsPayload | undefined,
-): InferenceRuntimeOverrides | undefined {
+**Tool-call recursion drops `runtimeOverrides`:** when `infer` recurses after tool execution, the nested `infer` call does **not** pass `runtimeOverrides` (nor `stream` in some branches). Subsequent hops rely on env keys only — **BYOK injected only on the first hop is lost**.
+
+```946:987:worker/agents/inferutils/core.ts
+            if (executedCallsWithResults.length) {
+                if (schema && schemaName) {
+                    const output = await infer<OutputSchema>({
+                        env,
+                        metadata,
+                        messages,
+                        schema,
+                        schemaName,
+                        format,
+                        formatOptions,
+                        actionKey,
+                        modelName,
+                        maxTokens,
+                        stream,
+                        tools,
+                        reasoning_effort,
+                        temperature,
+                        frequency_penalty,
+                        abortSignal,
+                        onAssistantMessage,
+                        completionConfig,
+                    }, newToolCallContext);
+                    return output;
+                } else {
+                    const output = await infer({
+                        env,
+                        metadata,
+                        messages,
+                        modelName,
+                        maxTokens,
+                        actionKey,
+                        stream,
+                        tools,
+                        reasoning_effort,
+                        temperature,
+                        frequency_penalty,
+                        abortSignal,
+                        onAssistantMessage,
+                        completionConfig,
+                    }, newToolCallContext);
+                    return output;
+                }
 ```
-
-- **`getConfigurationForModel`** builds `baseURL` (AI Gateway vs direct override) and sets `cf-aig-authorization` when gateway token differs from provider key (BYOK + platform gateway pattern).
-
-### What is missing
-
-- **Inconsistent paths:** some code uses raw **`AGENT_CONFIG`** + **`infer`** without `runtimeOverrides` or `executeInference` (see §6).  
-- **No** per-request merge of vault-decrypted keys into `runtimeOverrides` inside the DO unless the client sent credentials on start or a future WS hook is enabled.
 
 ---
 
 ## 4. BYOK: templates, vault, platform model list
 
-### What it does today
+### Today
 
-- **`getBYOKTemplates()`** filters `getTemplatesData()` to `category === 'byok'` (`worker/types/secretsTemplates.ts`): OpenAI, Anthropic, Google AI Studio, Cerebras, Workers AI BYOK entries with `provider` ids aligned to gateway/env naming.  
-- **`loadByokKeysFromUserVault`** iterates BYOK templates and reads `UserSecretsStore` stub per user; used by **`ModelConfigController.testModelConfig`** when `useUserKeys` is true.  
-- **`getUserProviderStatus`**, **`getByokModels`**, **`getPlatformAvailableModels`**, **`validateModelAccessForEnvironment`** in `byokHelper.ts`: platform keys from env (and optional comma list in `PLATFORM_MODEL_PROVIDERS`), user access if vault has a valid key for that provider. Access is **platform key OR user key**.
+- **`loadByokKeysFromUserVault`**, **`getUserProviderStatus`**, **`getByokModels`**, **`validateModelAccessForEnvironment`**, **`getPlatformAvailableModels`** (`byokHelper.ts:29-202`).  
+- **`ModelConfigController.testModelConfig`:** when `useUserKeys`, loads vault into `userApiKeys` and passes to `ModelTestService` (`controller.ts:300-313`).  
+- **`ModelTestService.testModelConfig`** passes `runtimeOverrides: { userApiKeys }` into **`infer`** (`ModelTestService.ts:45-57`).
 
-```133:170:worker/api/controllers/modelConfig/byokHelper.ts
-export function getPlatformEnabledProviders(env: Env): string[] {
-	const configured = env.PLATFORM_MODEL_PROVIDERS
-		? env.PLATFORM_MODEL_PROVIDERS.split(',').map((p) => p.trim()).filter(Boolean)
-		: null;
-	// ... auto-detect from *_API_KEY ...
-	if (configured) {
-		const merged = new Set(configured);
-		// ...
-		return [...merged];
-	}
-	return autoDetected;
-}
-```
+### Missing
 
-### What is missing
-
-- **OpenRouter** (and other) templates exist in **non-BYOK** `getTemplatesData` but are **not** in `getBYOKTemplates`; BYOK flow for OpenRouter is not in the BYOK template loop used by `loadByokKeysFromUserVault`.  
-- **No admin UI/API** to define **custom OpenAI-compatible base URLs** for tenants; user **`user_model_providers`** table + service exist but mutations are **503** (see §5).
+- Vault keys are **not** merged into agent `runtimeOverrides` during normal codegen — only tests and optional HTTP `credentials`.  
+- OpenRouter / other non-BYOK-template providers: not in the same vault template loop as `getBYOKTemplates()` (verify in `worker/types/secretsTemplates.ts` when extending BYOK).
 
 ---
 
 ## 5. Custom provider controller and DB
 
-### What it does today
+### Today
 
-- **`ModelProvidersService`** (`worker/database/services/ModelProvidersService.ts`) implements CRUD against **`user_model_providers`** for a **userId**.  
-- **`ModelProvidersController`**: **GET** list/detail still work off D1; **create / update / delete** return **503** with message to use BYOK vault. **`testProvider`** still allows ad-hoc `baseUrl` + `apiKey` **GET** to `{baseUrl}/models` (SSRF surface if exposed to untrusted URLs).
+- **`ModelProvidersController`:** GET list/detail active providers; create/update/delete return **503** with BYOK vault message (`controller.ts:117-120`, `156-159`, `179-181`).  
+- **`testProvider`:** ad-hoc `baseUrl` + `apiKey` fetch to `{baseUrl}/models` (`controller.ts:216-228`).
 
-```117:120:worker/api/controllers/modelProviders/controller.ts
-            return ModelProvidersController.createErrorResponse<ModelProviderCreateData>(
-                'Custom model providers are temporarily disabled. Please use BYOK (Bring Your Own Key) in the vault settings.',
-                503
-            );
-```
+### Missing
 
-- **WebSocket `SESSION_INIT`**: intended to call `setRuntimeOverrides(credentialsToRuntimeOverrides(credentials))` is **commented out**; log says “Disable for now”.
+- Super-admin / agency registration routes: **none** in `worker` for the searched patterns (see §8).  
+- SSRF / abuse review for `testProvider` if exposed to untrusted callers.
+
+---
+
+## 6. `SESSION_INIT`, `PhaseGeneration`, `realtimeCodeFixer`
+
+### `SESSION_INIT` (WebSocket)
+
+**Today:** Handler exists; credential wiring **commented out**.
 
 ```21:25:worker/agents/core/websocket.ts
             case WebSocketMessageRequests.SESSION_INIT: {
                 // const credentials = parsedMessage.credentials as CredentialsPayload | undefined;
                 // agent.getBehavior().setRuntimeOverrides(credentialsToRuntimeOverrides(credentials));
                 logger.info(`Received session init message from ${connection.id}, Disable for now`);
+                break;
 ```
 
-### What is missing
+### `PhaseGeneration`
 
-- **Super-admin / agency-admin** endpoints: **none** found under `worker/` for agency or super-admin provider registration (grep for `agency`, `superAdmin`, `super_admin` in `worker/**/*.ts` returned **no matches**).  
-- **Scoped providers** (platform vs agency vs user) **not** modeled; only per-user `user_model_providers` with CRUD disabled.
-
----
-
-## 6. Partial bypasses of the unified resolution path
-
-### What it does today
-
-- **`PhaseGeneration`** passes `reasoning_effort` from **`AGENT_CONFIG.phaseGeneration`** directly, not from `resolveModelConfig` output for that field when calling `executeInference` (optional param can override merged config).
+**Today:** Uses **`executeInference`** with `agentActionName: "phaseGeneration"` so **model name** respects `resolveModelConfig`.  
+**Gap:** Explicit `reasoning_effort` argument is derived from **`AGENT_CONFIG.phaseGeneration`**, not from the merged user config for that field when the branch activates.
 
 ```306:314:worker/agents/operations/PhaseGeneration.ts
             const results = await executeInference({
-                // ...
+                env: env,
+                messages,
+                agentActionName: "phaseGeneration",
+                schema: PhaseConceptGenerationSchema,
                 context: options.inferenceContext,
                 reasoning_effort: (userContext?.suggestions || issues.runtimeErrors.length > 0) ? AGENT_CONFIG.phaseGeneration.reasoning_effort == 'low' ? 'medium' : 'high' : undefined,
+                format: 'markdown',
+            });
 ```
 
-- **`realtimeCodeFixer`**: diff correction calls **`infer`** with **`AGENT_CONFIG['realtimeCodeFixer'].name`** and **no** `runtimeOverrides` — BYOK / user model config not applied on that path.
+### `realtimeCodeFixer`
+
+**Today:** `IsRealtimeCodeFixerEnabled` checks `AGENT_CONFIG` then `userModelConfigs['realtimeCodeFixer']` (`realtimeCodeFixer.ts:536-548`).  
+**Gap:** Diff-correction path calls **`infer` directly** with `modelName: AGENT_CONFIG['realtimeCodeFixer'].name` and **no** `runtimeOverrides` — user model choice and BYOK keys from context are **not** applied on that hop.
 
 ```489:498:worker/agents/assistants/realtimeCodeFixer.ts
             const llmResponse = await infer({
                 env: this.env,
                 metadata: this.inferenceContext.metadata,
                 modelName: AGENT_CONFIG['realtimeCodeFixer'].name,
-                // ...
+                reasoning_effort: 'low',
+                temperature: 0.0,
+                maxTokens: 10000,
+                actionKey:'realtimeCodeFixer',
                 messages,
             });
 ```
-
-- **`IsRealtimeCodeFixerEnabled`** checks `AGENT_CONFIG` first, then `inferenceContext.userModelConfigs['realtimeCodeFixer']` — consistent with user override for **enablement**, but the diff-correction **`infer`** path still ignores user model name.
-
-### What is missing
-
-- Single **invariant**: “all LLM calls go through `executeInference` + full `InferenceContext`” is **not** true today; documented in `docs/analysis/ai-engineering-review-2.0.0.md` as well.
 
 ---
 
 ## 7. Constraint and policy layer
 
-### What it does today
+### Today
 
-- **`validateAgentConstraints`** (`constraintHelper.ts`): if no constraint or disabled → valid.  
-- **`getFilteredModelsForAgent`**: used by **`getByokProviders`** when `agentAction` query param is set, so UI can restrict pickers per action.
+- **`validateAgentConstraints`**, **`getFilteredModelsForAgent`** (`constraintHelper.ts`).  
+- **`getByokProviders`** optional `agentAction` filter (`modelConfig/controller.ts:383-437`).
 
-### What is missing
+### Missing
 
-- **D1 policy** for org/agency templates, caps, or required models: **absent**.  
-- **Named preset bundles** (goal 4): **not** implemented; only implicit “platform” vs “default” `AGENT_CONFIG`.
+- Org/agency allow-lists in D1.  
+- Named preset bundles (goal 4).
 
 ---
 
 ## 8. Agency / super-admin hooks (explicit finding)
 
-**Search:** `agency`, `superAdmin`, `super_admin`, `tenant` in `worker/**/*.ts` — **no matches**.
+**Search:** `agency`, `superAdmin`, `super_admin`, `tenant` in `worker/**/*.ts` — **no matches** (2026-04-04).
 
-**Interpretation:** There are **no** Worker-side agency or super-admin hooks for model policy or provider registration. Administration is **per authenticated user** (`ModelConfigController`, `ModelProvidersController`) plus **deployment env** (`PLATFORM_MODEL_PROVIDERS`, `*_API_KEY`).
+**Interpretation:** No Worker-side agency or super-admin hooks for model policy or provider registration under these names. Administration is **per user** + **deployment env**.
 
 ---
 
@@ -283,10 +337,11 @@ export function getPlatformEnabledProviders(env: Env): string[] {
 | User config D1 | `worker/database/services/ModelConfigService.ts`, `worker/database/schema.ts` |
 | HTTP model API | `worker/api/controllers/modelConfig/controller.ts` |
 | BYOK helpers | `worker/api/controllers/modelConfig/byokHelper.ts` |
+| Model test + BYOK | `worker/database/services/ModelTestService.ts` |
 | Secrets templates | `worker/types/secretsTemplates.ts` |
 | Custom providers | `worker/api/controllers/modelProviders/controller.ts`, `worker/database/services/ModelProvidersService.ts` |
-| Agent init / reload | `worker/api/controllers/agent/controller.ts`, `worker/agents/core/codingAgent.ts`, `worker/agents/core/websocket.ts` |
-| Bypass paths | `worker/agents/operations/PhaseGeneration.ts`, `worker/agents/assistants/realtimeCodeFixer.ts` |
+| Agent init / DO | `worker/api/controllers/agent/controller.ts`, `worker/agents/core/codingAgent.ts`, `worker/agents/core/behaviors/base.ts`, `worker/agents/core/websocket.ts` |
+| Bypass / partial paths | `worker/agents/operations/PhaseGeneration.ts`, `worker/agents/assistants/realtimeCodeFixer.ts` |
 
 ---
 

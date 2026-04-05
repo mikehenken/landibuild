@@ -54,6 +54,7 @@ export function useChat({
 	onDebugMessage,
 	onTerminalMessage,
 	onVaultUnlockRequired,
+	onModelCatalogRevision,
 }: {
 	chatId?: string;
 	query: string | null;
@@ -62,6 +63,8 @@ export function useChat({
 	onDebugMessage?: (type: 'error' | 'warning' | 'info' | 'websocket', message: string, details?: string, source?: string, messageType?: string, rawMessage?: unknown) => void;
 	onTerminalMessage?: (log: { id: string; content: string; type: 'command' | 'stdout' | 'stderr' | 'info' | 'error' | 'warn' | 'debug'; timestamp: number; source?: string }) => void;
 	onVaultUnlockRequired?: (reason: string) => void;
+	/** Invoked when server reports a newer model catalog revision than the client had seen. */
+	onModelCatalogRevision?: () => void;
 }) {
 	// Derive initial behavior type from project type using feature system
 	const getInitialBehaviorType = (): BehaviorType => {
@@ -145,6 +148,14 @@ export function useChat({
 	
 	// Track whether we've completed initial state restoration to avoid disrupting active sessions
 	const [isInitialStateRestored, setIsInitialStateRestored] = useState(false);
+
+	const modelCatalogRevisionRef = useRef<number | null>(null);
+	const [canvasArtifact, setCanvasArtifact] = useState<{
+		title: string;
+		body: string;
+		kind: string;
+	} | null>(null);
+	const clearCanvasArtifact = useCallback(() => setCanvasArtifact(null), []);
 
 	const updateStage = useCallback(
 		(stageId: ProjectStage['id'], data: Partial<Omit<ProjectStage, 'id'>>) => {
@@ -245,6 +256,9 @@ export function useChat({
 				if (!evt.path.includes('/slides/')) return;
 				window.dispatchEvent(new CustomEvent('presentation-file-event', { detail: evt }));
 			},
+			modelCatalogRevisionRef,
+			onModelCatalogRevision,
+			setCanvasArtifact,
 		} as HandleMessageDeps),
 		[
 			isInitialStateRestored,
@@ -265,6 +279,7 @@ export function useChat({
 			onTerminalMessage,
 			onVaultUnlockRequired,
 			clearDeploymentTimeout,
+			onModelCatalogRevision,
 		],
 	);
 
@@ -775,5 +790,7 @@ export function useChat({
 		projectType: internalProjectType,
 		templateDetails,
 		allFiles,
+		canvasArtifact,
+		clearCanvasArtifact,
 	};
 }

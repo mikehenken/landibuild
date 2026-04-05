@@ -23,6 +23,20 @@ type AgentConnectedMessage = {
     previewUrl?: string;
 };
 
+/** Server pushes catalog policy revision so clients can refetch model config when it changes. */
+type ModelCatalogRevisionMessage = {
+	type: 'model_catalog_revision';
+	revision: number;
+};
+
+/** Static canvas artifact (v1); render in split pane when UI is wired. */
+type ArtifactPreviewMessage = {
+	type: 'artifact_preview';
+	title: string;
+	kind: 'static_note';
+	body: string;
+};
+
 type TemplateUpdatedMessage = {
 	type: 'template_updated';
     templateDetails: TemplateDetails;
@@ -564,6 +578,8 @@ export type VaultWebSocketMessage =
 export type WebSocketMessage =
 	| StateMessage
 	| AgentConnectedMessage
+	| ModelCatalogRevisionMessage
+	| ArtifactPreviewMessage
 	| TemplateUpdatedMessage
 	| ConversationStateMessage
 	| GenerationStartedMessage

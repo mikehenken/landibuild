@@ -1,48 +1,81 @@
 # Phase 1C — BYOK, tenancy, SSRF (external + repository)
 # Normative for bundle §B / §C refresh and §I.5 digest.
+# Citation ids use AMA-style keys: OrganizationOrPublisher-DocumentOrSection (journal-style brevity).
 
 sources:
-  - id: owasp-ssrf
-    title: OWASP SSRF Prevention Cheat Sheet
+  - id: OWASP-CSS-SSRF-Prevention
+    title: Server-Side Request Forgery Prevention Cheat Sheet
+    publisher: OWASP Cheat Sheet Series
     url: https://cheatsheetseries.owasp.org/cheatsheets/Server_Side_Request_Forgery_Prevention_Cheat_Sheet.html
-    description: Allowlists, deny lists, DNS resolution and IP validation, redirects, defense in depth for server-side fetch to user-influenced URLs.
+    accessed: 2026-04-04
+    description: Allowlists, deny lists, DNS resolution and IP validation, redirect handling, defense in depth for server-side fetch to user-influenced URLs.
 
-  - id: litellm-virtual-keys
-    title: LiteLLM Virtual Keys
+  - id: WHATWG-Fetch-RequestRedirect
+    title: Fetch Standard — enum RequestRedirect
+    publisher: WHATWG
+    url: https://fetch.spec.whatwg.org/#enumdef-requestredirect
+    accessed: 2026-04-04
+    description: Defines follow, error, and manual redirect modes for fetch; default follow implies automatic redirect traversal unless overridden.
+
+  - id: LiteLLM-Docs-VirtualKeys
+    title: Virtual Keys
+    publisher: LiteLLM (Berri AI)
     url: https://docs.litellm.ai/docs/proxy/virtual_keys
+    accessed: 2026-04-04
     description: Multi-tenant API key abstraction, budgets, and model access groups as a reference pattern for org vs user key precedence.
 
-  - id: openrouter-byok
-    title: OpenRouter BYOK
+  - id: OpenRouter-Docs-BYOK
+    title: BYOK (Bring Your Own Key)
+    publisher: OpenRouter
     url: https://openrouter.ai/docs/use-cases/byok
+    accessed: 2026-04-04
     description: End-user supplied keys and routing implications when platform vs customer keys coexist.
 
-  - id: cloudflare-workers-fetch
-    title: Cloudflare Workers fetch API
+  - id: Cloudflare-Docs-Workers-Fetch
+    title: Fetch
+    publisher: Cloudflare Workers docs
     url: https://developers.cloudflare.com/workers/runtime-apis/fetch/
-    description: Outbound HTTP from Workers; same trust boundaries as other server runtimes for SSRF when URLs are user-controlled.
+    accessed: 2026-04-04
+    description: Outbound HTTP from Workers via the Fetch API; subrequest behavior, cache modes, Worker-to-Worker routing via service bindings or compatibility flags.
 
-  - id: SRC-BYOK-VAULT
+  - id: Cloudflare-Docs-Workers-CompatFlags-GlobalFetchStrictlyPublic
+    title: Compatibility flags — global_fetch_strictly_public
+    publisher: Cloudflare Workers docs
+    url: https://developers.cloudflare.com/workers/configuration/compatibility-flags/#global-fetch-strictly-public
+    accessed: 2026-04-04
+    description: When enabled, global fetch routes as public Internet; when disabled, same-zone URLs may route to zone origin—relevant to understanding outbound request paths, not a substitute for application-level SSRF controls.
+
+  - id: LandiBuild-WORKER-ByokHelper
     type: codebase
     path: worker/api/controllers/modelConfig/byokHelper.ts
-    note: loadByokKeysFromUserVault, getUserProviderStatus, vault stub per user id
+    note: loadByokKeysFromUserVault, getUserProviderStatus; UserSecretsStore stub via idFromName(userId)
 
-  - id: SRC-BYOK-TEMPLATES
+  - id: LandiBuild-WORKER-SecretsTemplates-BYOK
     type: codebase
     path: worker/types/secretsTemplates.ts
-    note: getBYOKTemplates filters category byok; provider list for vault-backed BYOK
+    note: getBYOKTemplates filters category === byok; providers openai, anthropic, google-ai-studio, cerebras, workers
 
-  - id: SRC-PROVIDERS-TEST
+  - id: LandiBuild-WORKER-ModelProvidersController
     type: codebase
     path: worker/api/controllers/modelProviders/controller.ts
-    note: testProvider direct baseUrl + GET /models; CRUD 503
+    note: testProvider fetch to user baseUrl/models; create/update/delete 503; providerId test path 503
 
-  - id: SRC-SECRETS-TESTS
+  - id: LandiBuild-WORKER-ModelProviderRoutes
+    type: codebase
+    path: worker/api/routes/modelProviderRoutes.ts
+    note: All provider routes require AuthConfig.authenticated
+
+  - id: LandiBuild-WORKER-ModelTestService
+    type: codebase
+    path: worker/database/services/ModelTestService.ts
+    note: testProviderKey uses infer() with provider-named test models—no user-controlled base URL in this path
+
+  - id: LandiBuild-TEST-Secrets
     type: codebase
     path: test/worker/services/secrets/
-    note: Encryption hierarchy and vault behavior (MEK/UMK/DEK) documented in CLAUDE.md; tests exercise store contracts
+    note: User Secrets store contracts; CLAUDE.md documents MEK to UMK to DEK hierarchy for the DO-backed vault
 
 inferred:
   - claim: No organization/agency tenancy in worker TypeScript for model policy
-    basis: Same ripgrep as p1a — agency|superAdmin|super_admin|tenant in worker/**/*.ts — zero matches (2026-04-04)
-    confidence: high for searched patterns
+    basis: ripgrep agency|superAdmin|super_admin|tenant in worker/**/*.ts — zero matches (2026-04-04)
+    confidence: high for searched patterns; product may use other naming outside worker/

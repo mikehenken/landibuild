@@ -1,21 +1,151 @@
+# Phase 1D — AG-UI, A2UI, CopilotKit cross-check, PartySocket/DO fit
+# Normative protocol URLs; codebase paths optional for bundle alignment.
+
 sources:
-  - id: ag-ui-protocol
-    title: "AG-UI (Agent-User Interaction) Integration"
-    url: "https://docs.ag2.ai/latest/docs/user-guide/ag-ui/"
-    description: "Standardizes how frontends communicate with agents, handles streaming, tool-call lifecycle, state sync, and human-in-the-loop checkpoints."
-  - id: a2ui-protocol
-    title: "AG2 + A2UI Protocol - AI-to-User Interface Standard"
-    url: "https://ag2.ai/ecosystem/a2ui"
-    description: "Declarative generative UI specification that enables agents to dynamically generate and render rich, interactive UI components in real-time."
-  - id: copilotkit-open-canvas
-    title: "CopilotKit Open Multi-Agent Canvas"
-    url: "https://github.com/CopilotKit/open-multi-agent-canvas"
-    description: "Open-source multi-agent chat interface with split-pane/artifact UX."
-  - id: copilotkit-cloudflare
-    title: "CopilotKit Cloudflare Workers Integration"
-    url: "https://github.com/klammertime/ag-ui-cloudflare"
-    description: "Native AG-UI protocol adapter providing full protocol support with Cloudflare models."
-  - id: partykit-docs
-    title: "How PartyKit works"
-    url: "https://docs.partykit.io/how-partykit-works"
-    description: "PartyKit runtime built on Cloudflare's workerd runtime, powering PartySocket and Durable Objects."
+  - id: ag-ui-overview
+    title: AG-UI — Agent–User Interaction Protocol (overview)
+    url: https://docs.ag-ui.com/introduction
+    description: Open, event-based protocol standardizing agent↔application connection; complements MCP (tools) and A2A (agent↔agent); building blocks and integrations matrix.
+
+  - id: ag-ui-llms-txt
+    title: AG-UI documentation index (llms.txt)
+    url: https://docs.ag-ui.com/llms.txt
+    description: Machine-discoverable index of all AG-UI doc pages, SDK paths, OpenAPI reference.
+
+  - id: ag-ui-architecture
+    title: AG-UI core architecture
+    url: https://docs.ag-ui.com/concepts/architecture
+    description: Event-driven design, transport-agnostic delivery (SSE, WebSockets, etc.), client-server model, RunAgent Observable pattern, event categories.
+
+  - id: ag-ui-events
+    title: AG-UI events
+    url: https://docs.ag-ui.com/concepts/events
+    description: Lifecycle, text, tool, state, activity, special, and draft event types; RunStarted/Finished/Error; TextMessage*; ToolCall*; StateSnapshot/Delta; MessagesSnapshot.
+
+  - id: ag-ui-state
+    title: AG-UI state management
+    url: https://docs.ag-ui.com/concepts/state
+    description: STATE_SNAPSHOT vs STATE_DELTA (JSON Patch RFC 6902); shared state for human-in-the-loop; CopilotKit shared-state example.
+
+  - id: ag-ui-generative-ui-specs
+    title: AG-UI and generative UI specifications
+    url: https://docs.ag-ui.com/concepts/generative-ui-specs
+    description: AG-UI is not a generative UI spec; lists A2UI, Open-JSON-UI, MCP-UI as generative UI layers AG-UI can carry.
+
+  - id: ag-ui-server-quickstart
+    title: AG-UI server quickstart
+    url: https://docs.ag-ui.com/quickstart/server
+    description: Implementing AG-UI-compatible servers; RunAgentInput; EventEncoder; SSE streaming; reference ag-ui-protocol/ag-ui repo and integrations.
+
+  - id: ag-ui-openapi
+    title: AG-UI OpenAPI specification
+    url: https://docs.ag-ui.com/api-reference/openapi.json
+    description: Formal API reference for HTTP-oriented AG-UI endpoints.
+
+  - id: ag-ui-github
+    title: ag-ui-protocol/ag-ui (GitHub)
+    url: https://github.com/ag-ui-protocol/ag-ui
+    description: Spec, SDKs (JS, Python, community Kotlin/Go/Dart/Java/Rust), integrations, dojo demos.
+
+  - id: ag-ui-dojo
+    title: AG-UI Dojo (demos)
+    url: https://dojo.ag-ui.com/
+    description: Interactive demos per framework/integration (shared state, tool-based generative UI, etc.).
+
+  - id: ag-ui-agentic-protocols
+    title: MCP, A2A, and AG-UI
+    url: https://docs.ag-ui.com/agentic-protocols
+    description: Layered view of agentic protocols; AG-UI vs A2UI naming clarification with link to generative UI specs.
+
+  - id: a2ui-home
+    title: A2UI — Agent-driven interfaces
+    url: https://a2ui.org/
+    description: Declarative, non-executable UI over trust boundaries; v0.8 stable / v0.9 draft; Apache 2.0; Google with CopilotKit contributions.
+
+  - id: a2ui-spec-v08
+    title: A2UI specification v0.8 (stable)
+    url: https://a2ui.org/specification/v0.8-a2ui/
+    description: Surfaces, components, data binding, adjacency list model.
+
+  - id: a2ui-spec-v09
+    title: A2UI specification v0.9 (draft)
+    url: https://a2ui.org/specification/v0.9-a2ui/
+    description: createSurface, client-side functions, custom catalogs, extension spec; version field on messages.
+
+  - id: a2ui-concepts-overview
+    title: A2UI core concepts
+    url: https://a2ui.org/concepts/overview/
+    description: Streaming messages, declarative components, data binding; message types surfaceUpdate/dataModelUpdate/beginRendering (v0.8) vs v0.9 split.
+
+  - id: a2ui-transports
+    title: A2UI transports
+    url: https://a2ui.org/concepts/transports/
+    description: Transport-agnostic JSON/JSONL; A2A stable; AG UI stable for full-stack React; WebSockets/SSE proposed/planned.
+
+  - id: a2ui-a2a-extension
+    title: A2UI A2A extension specification
+    url: https://a2ui.org/specification/v0.8-a2a-extension/
+    description: Agent2Agent extension for A2UI message delivery in multi-agent meshes.
+
+  - id: a2ui-github
+    title: google/A2UI (GitHub)
+    url: https://github.com/google/A2UI
+    description: Specifications, reference renderers (Angular, Flutter, Lit, Markdown, etc.).
+
+  - id: copilotkit-ag-ui-a2ui
+    title: CopilotKit — AG-UI and A2UI explained
+    url: https://copilotkit.ai/ag-ui-and-a2ui
+    description: Complementary roles; CopilotKit as launch partner for A2UI; generative UI types (static, declarative, open-ended).
+
+  - id: copilotkit-docs
+    title: CopilotKit documentation
+    url: https://docs.copilotkit.ai/
+    description: React integration, framework adapters (LangGraph, ADK, Mastra, etc.), AG-UI-shaped client usage.
+
+  - id: copilotkit-open-multi-agent-canvas
+    title: CopilotKit open-multi-agent-canvas (reference UX)
+    url: https://github.com/CopilotKit/open-multi-agent-canvas
+    description: Open-source multi-agent chat with split-pane / canvas-style layout; MCP-oriented research UX — cross-check for open-canvas patterns only.
+
+  - id: copilotkit-a2ui-widget-builder
+    title: A2UI Widget Builder (CopilotKit)
+    url: https://go.copilotkit.ai/A2UI-widget-builder
+    description: Composer for experimenting with A2UI widgets.
+
+  - id: partykit-how-it-works
+    title: PartyKit — how PartyKit works
+    url: https://docs.partykit.io/how-partykit-works
+    description: Worker/Durable Object runtime context for PartySocket; aligns WebSocket transport with Cloudflare edge.
+
+  - id: cloudflare-agents
+    title: Cloudflare Agents SDK
+    url: https://developers.cloudflare.com/agents/
+    description: Durable Object–hosted agents; WebSockets, SSE, state sync; separate product path from custom CodeGenerator DO but same platform primitives.
+
+  - id: cloudflare-durable-objects
+    title: Cloudflare Durable Objects
+    url: https://developers.cloudflare.com/durable-objects/
+    description: Stateful isolation, SQLite, WebSockets — host for session authority and reconnect semantics.
+
+  - id: community-ag-ui-cloudflare
+    title: Community — ag-ui-cloudflare (example adapter)
+    url: https://github.com/klammertime/ag-ui-cloudflare
+    description: Third-party AG-UI on Cloudflare illustration; not official AG-UI or Cloudflare endorsement — spike reference only.
+
+codebase:
+  - id: SRC-WS-BRIDGE
+    path: worker/agents/core/websocket.ts
+    note: PartySocket / WebSocket bridge to codegen Durable Object; natural seam for AG-UI envelope or parallel channel tagging.
+
+  - id: SRC-WS-CLIENT
+    path: src/routes/chat/utils/handle-websocket-message.ts
+    note: Frontend WS message handling and deduplication; consumer side for mapped AG-UI events.
+
+inferred:
+  - claim: AG-UI official docs list Cloudflare Agents integration as In Progress
+    basis: docs.ag-ui.com overview integrations table (fetched 2026-04-04)
+    confidence: high until upstream status changes
+
+  - claim: A2UI lists WebSockets as proposed transport; AG UI integration marked stable for React stacks
+    basis: a2ui.org/concepts/transports/ (fetched 2026-04-04)
+    confidence: high

@@ -99,6 +99,14 @@ export interface HandleMessageDeps {
         source?: string
     }) => void;
     onVaultUnlockRequired?: (reason: string) => void;
+
+    /** Last seen model catalog revision (client ref); used to detect policy bumps. */
+    modelCatalogRevisionRef?: React.MutableRefObject<number | null>;
+    /** Refetch model configs over WebSocket when revision increases after connect. */
+    onModelCatalogRevision?: () => void;
+    setCanvasArtifact?: React.Dispatch<
+        React.SetStateAction<{ title: string; body: string; kind: string } | null>
+    >;
 }
 
 export function createWebSocketMessageHandler(deps: HandleMessageDeps) {
@@ -159,6 +167,9 @@ export function createWebSocketMessageHandler(deps: HandleMessageDeps) {
             onDebugMessage,
             onTerminalMessage,
             clearDeploymentTimeout,
+            modelCatalogRevisionRef,
+            onModelCatalogRevision,
+            setCanvasArtifact,
         } = deps;
 
         // Log messages except for frequent ones
@@ -1033,6 +1044,36 @@ export function createWebSocketMessageHandler(deps: HandleMessageDeps) {
                 );
                 setMessages(prev => [...prev, rateLimitMessage]);
                 
+                break;
+            }
+
+            case 'model_catalog_revision': {
+                const rev = message.revision;
+                if (typeof rev !== 'number' || Number.isNaN(rev)) break;
+                const prevRev = modelCatalogRevisionRef?.current;
+                if (modelCatalogRevisionRef) {
+                    modelCatalogRevisionRef.current = rev;
+                }
+                if (prevRev != null && rev > prevRev) {
+                    toast.info('Model settings were updated. Refreshing configuration for new turns.');
+                    onModelCatalogRevision?.();
+                }
+                break;
+            }
+
+            case 'artifact_preview': {
+                const { title, body, kind } = message;
+                if (
+                    setCanvasArtifact &&
+                    typeof title === 'string' &&
+                    typeof body === 'string'
+                ) {
+                    setCanvasArtifact({
+                        title,
+                        body,
+                        kind: typeof kind === 'string' ? kind : 'static_note',
+                    });
+                }
                 break;
             }
 

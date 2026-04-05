@@ -15,7 +15,7 @@ sources:
   - id: SRC-CORE
     type: codebase
     path: worker/agents/inferutils/core.ts
-    note: getApiKey, getConfigurationForModel, infer + runtimeOverrides
+    note: getApiKey, getConfigurationForModel, infer + runtimeOverrides; tool-recursive infer calls omit runtimeOverrides (lines ~946-987)
 
   - id: SRC-TYPES
     type: codebase
@@ -72,7 +72,16 @@ sources:
     path: worker/agents/assistants/realtimeCodeFixer.ts
     note: infer without executeInference / runtimeOverrides
 
+  - id: SRC-BASE-BEHAVIOR
+    type: codebase
+    path: worker/agents/core/behaviors/base.ts
+    note: getInferenceContext hardcodes enableRealtimeCodeFix / enableFastSmartCodeFix false; carries userModelConfigs + runtimeOverrides
+
 inferred:
   - claim: No agency or super-admin hooks in worker TypeScript tree
     basis: ripgrep agency|superAdmin|super_admin|tenant in worker/**/*.ts — zero matches (2026-04-04)
     confidence: high for searched patterns; product may use other naming outside worker/
+
+  - claim: Tool-call recursion can drop BYOK keys for follow-up LLM hops
+    basis: recursive infer() in core.ts does not pass runtimeOverrides (2026-04-04 refresh)
+    confidence: high

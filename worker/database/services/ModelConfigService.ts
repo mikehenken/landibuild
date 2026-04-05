@@ -13,10 +13,19 @@ import { generateId } from '../../utils/idGenerator';
 import type { UserModelConfigWithMetadata } from '../types';
 import { validateAgentConstraints } from 'worker/api/controllers/modelConfig/constraintHelper';
 import { toAIModel } from '../../agents/inferutils/config.types';
+import { ModelCatalogRevisionService } from '../../services/model-catalog/ModelCatalogRevisionService';
 
 type ConstraintStrategy = 'throw' | 'fallback';
 
 export class ModelConfigService extends BaseService {
+	private bumpCatalogRevision(): void {
+		void new ModelCatalogRevisionService(this.env)
+			.bumpRevision()
+			.catch((err: unknown) => {
+				this.logger.warn('model catalog revision bump failed', { err });
+			});
+	}
+
 	private castToReasoningEffort(value: string | null): ReasoningEffort | undefined {
 		if (!value) return undefined;
 		return value as ReasoningEffort;
@@ -299,6 +308,7 @@ export class ModelConfigService extends BaseService {
 				.where(eq(userModelConfigs.id, existingConfig[0].id))
 				.returning();
 
+			this.bumpCatalogRevision();
 			return updated[0];
 		} else {
 			// Create new config
@@ -313,6 +323,7 @@ export class ModelConfigService extends BaseService {
 				.values(newConfig)
 				.returning();
 
+			this.bumpCatalogRevision();
 			return created[0];
 		}
 	}
@@ -328,7 +339,9 @@ export class ModelConfigService extends BaseService {
 				eq(userModelConfigs.agentActionName, agentActionName)
 			));
 
-		return (result.meta?.changes || 0) > 0;
+		const deleted = (result.meta?.changes || 0) > 0;
+		if (deleted) this.bumpCatalogRevision();
+		return deleted;
 	}
 
 	/**
@@ -346,6 +359,8 @@ export class ModelConfigService extends BaseService {
 			.delete(userModelConfigs)
 			.where(eq(userModelConfigs.userId, userId));
 
-		return result.meta?.changes || 0;
+		const n = result.meta?.changes || 0;
+		if (n > 0) this.bumpCatalogRevision();
+		return n;
 	}
 }

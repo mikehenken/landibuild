@@ -6,27 +6,34 @@
 
 | Item | Evidence |
 |------|----------|
-| Trace client message handler | `code-trace-chat-ws-ask-agent.md` §1–2, §3.6; `handle-websocket-message.ts` citations |
-| Trace connection lifecycle | §2.1–2.5; `use-chat.ts`, `controller.ts`, `codingAgent.ts` |
-| Per-thread mode plug-in points | §4; state, payload, `handleUserInput`, optional `agent_connected` |
-| Platform assistant tools without replacing DO | §5; `customTools.ts` + `UserConversationProcessor.ts` |
-| path:line citations | Throughout primary doc |
-| Today vs missing | §4–5 explicit subsections |
+| Trace client message handler | Primary doc §3 (`handle-websocket-message.ts` full `switch` line map), §6.4 |
+| PartySocket lifecycle | Primary doc §2 (partysocket `WebSocket` vs app `connectWithRetry` / `connectAttemptIdRef`) |
+| Ask vs codegen integration | Primary doc §4 (`phasic` live `UserConversationProcessor` vs `agentic` queue; `handleUserInput` idle `generateAllFiles`) |
+| Worker/DO mapping | Primary doc §5–6, §10 |
+| AG-UI / PartySocket mapping | Primary doc §7 (projection table, adapter-on-`broadcast` note, reconnect/snapshot) |
+| path:line citations | §3.1 table + fenced blocks throughout |
+| Today vs missing | Primary doc §8 |
 
 ## Plan quality gates (Phase 1 research)
 
-- **Inspectability:** Deliverable is on disk under `journal_root/p1b-codebase-chat-ask-agent-ws/outputs/`.
-- **Evidence for repo claims:** Citations use `start:end:path` blocks; recommendations in §4–5 are labeled as proposed integration, not as existing code.
+- **Inspectability:** Deliverable under `journal_root/p1b-codebase-chat-ask-agent-ws/outputs/`.
+- **Evidence for repo claims:** Citations use `start:end:path` blocks; §7–8 label future vs current behavior.
 
-## Fixes applied before submit
+## Fixes applied (refresh)
 
-- Documented **two** distinct handlers (client `createWebSocketMessageHandler` vs worker `handleWebSocketMessage`) to avoid a common trace mistake.
+- **§3.1:** Complete inventory of `handle-websocket-message.ts` `switch` branches with approximate line ranges.
+- **§2:** PartySocket package behavior vs Landi URL usage and duplicate retry concern.
+- **§4:** Explicit mapping from product “ask mode” to **`BehaviorType` + queue vs immediate conversation + idle codegen**—no `mode` on `user_suggestion` today.
+- **§7:** Deeper AG-UI mapping paragraph (snapshot/stream/commands, DO fit, dual-envelope migration).
+- **Citation fix:** `chat.tsx` user send block lines corrected to **~658–674** (was outdated).
 
 ## Proof table (coordinator-friendly)
 
 | Claim | Proof location |
 |-------|----------------|
 | WS upgrade goes to DO stub | `controller.ts` ~271–276 |
-| Client parses inbound JSON in one switch | `handle-websocket-message.ts` ~175–1035 |
-| `user_suggestion` drives conversation + optional codegen | `websocket.ts` ~139–171; `codingAgent.ts` ~508–524 |
-| Tools assembled for conversation LLM | `UserConversationProcessor.ts` ~351–365; `customTools.ts` ~42–62 |
+| Client inbound routing | `handle-websocket-message.ts` §3.1 table |
+| `user_suggestion` → DO | `websocket.ts` ~139–171 |
+| Idle message can start codegen | `codingAgent.ts` ~517–523 |
+| Phasic vs agentic user path | `phasic.ts` ~724–726; `agentic.ts` ~134–175 |
+| Tools for conversation LLM | `UserConversationProcessor` + `customTools.ts` (primary doc §9) |

@@ -226,12 +226,16 @@ export class BuildSession {
 		this.connection!.send({ type: 'stop_generation' });
 	}
 
-	followUp(message: string, options?: { images?: ImageAttachment[] }): void {
+	followUp(
+		message: string,
+		options?: { images?: ImageAttachment[]; intent?: 'ask' | 'implement' },
+	): void {
 		this.assertConnected();
 		this.connection!.send({
 			type: 'user_suggestion',
 			message,
 			images: options?.images,
+			intent: options?.intent,
 		});
 	}
 

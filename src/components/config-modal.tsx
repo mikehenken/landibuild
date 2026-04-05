@@ -426,6 +426,15 @@ export function ConfigModal({
                 </p>
               </div>
             </div>
+            <Alert>
+              <Info className="h-4 w-4" />
+              <AlertDescription className="text-sm">
+                Custom OpenAI-compatible base URLs: saving named providers to your account may be unavailable until
+                vault-backed HTTP storage is enabled for this deployment. You can still use platform models, BYOK keys
+                for supported providers where enabled, and the provider &quot;Test connection&quot; flow with a base URL
+                and key when the API allows it.
+              </AlertDescription>
+            </Alert>
           </div>
 
           <Separator />

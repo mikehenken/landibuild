@@ -57,6 +57,21 @@ export default defineConfig({
 		},
 	},
 
+	// @cloudflare/vite-plugin uses a dedicated Worker environment (name = wrangler top-level name with `-` → `_`).
+	// Root `resolve.alias` applies to `client`; without this, Miniflare gets an unresolvable Worker bundle → Vite "fetch failed".
+	environments: {
+		landibuild: {
+			resolve: {
+				alias: {
+					debug: 'debug/src/browser',
+					'@': path.resolve(__dirname, './src'),
+					shared: path.resolve(__dirname, './shared'),
+					worker: path.resolve(__dirname, './worker'),
+				},
+			},
+		},
+	},
+
 	// Configure for Prisma + Cloudflare Workers compatibility
 	define: {
 		// Ensure proper module definitions for Cloudflare Workers context

@@ -26,6 +26,7 @@ import { useAutoScroll } from '@/hooks/use-auto-scroll';
 import { useImageUpload } from '@/hooks/use-image-upload';
 import { useDragDrop } from '@/hooks/use-drag-drop';
 import { Button } from '@/components/ui/button';
+import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '@/components/ui/resizable';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { sendWebSocketMessage } from './utils/websocket-helpers';
 import { detectContentType, isDocumentationPath, isMarkdownFile } from './utils/content-detector';
@@ -140,6 +141,8 @@ export default function Chat() {
 		[requestUnlock],
 	);
 
+	const onModelCatalogRevisionRef = useRef<() => void>(() => {});
+
 	const {
 		messages,
 		edit,
@@ -181,6 +184,8 @@ export default function Chat() {
 		projectType,
 		// Template metadata
 		templateDetails,
+		canvasArtifact,
+		clearCanvasArtifact,
 	} = useChat({
 		chatId: urlChatId,
 		query: userQuery,
@@ -188,6 +193,9 @@ export default function Chat() {
 		projectType: urlProjectType as ProjectType,
 		onDebugMessage: addDebugMessage,
 		onVaultUnlockRequired: handleVaultUnlockRequired,
+		onModelCatalogRevision: () => {
+			onModelCatalogRevisionRef.current();
+		},
 	});
 
 	// GitHub export functionality - use urlChatId directly from URL params
@@ -223,6 +231,12 @@ export default function Chat() {
 			type: 'get_model_configs'
 		}));
 	}, [websocket]);
+
+	useEffect(() => {
+		onModelCatalogRevisionRef.current = () => {
+			handleRequestConfigs();
+		};
+	}, [handleRequestConfigs]);
 
 	// Listen for model config info WebSocket messages
 	useEffect(() => {
@@ -301,6 +315,7 @@ export default function Chat() {
 	const messagesContainerRef = useRef<HTMLDivElement>(null);
 
 	const [newMessage, setNewMessage] = useState('');
+	const [messageIntent, setMessageIntent] = useState<'ask' | 'implement'>('ask');
 	const [showTooltip, setShowTooltip] = useState(false);
 
 	const { images, addImages, removeImage, clearImages, isProcessing } = useImageUpload({
@@ -669,6 +684,7 @@ export default function Chat() {
 				JSON.stringify({
 					type: 'user_suggestion',
 					message: newMessage,
+					intent: messageIntent,
 					images: images.length > 0 ? images : undefined,
 				}),
 			);
@@ -681,7 +697,7 @@ export default function Chat() {
 			// Ensure we scroll after sending our own message
 			requestAnimationFrame(() => scrollToBottom());
 		},
-		[newMessage, websocket, sendUserMessage, isChatDisabled, scrollToBottom, images, clearImages],
+		[newMessage, websocket, sendUserMessage, isChatDisabled, scrollToBottom, images, clearImages, messageIntent],
 	);
 
 	const [progress, total] = useMemo((): [number, number] => {
@@ -726,260 +742,278 @@ export default function Chat() {
 	return (
 		<div className="size-full flex flex-col min-h-0 text-text-primary bg-[#161817]">
 			<div className="flex-1 flex min-h-0 overflow-hidden justify-center">
-				<motion.div
-					layout="position"
-					className="flex-1 shrink-0 flex flex-col basis-0 max-w-[780px] w-full relative z-10 h-full min-h-0 mx-auto"
-				>
-					<ChatHeader
-						appId={persistedAppId}
-						title={headerTitle}
-						canManage={canManageApp}
-						attachmentCount={attachmentCount}
-						canUploadImages={!isChatDisabled && !isProcessing}
-						onTitleSaved={() => void refetchApp()}
-						onDeleteClick={() => setDeleteChatOpen(true)}
-						onOpenAttachments={() => setAttachmentsOpen(true)}
-						onRequestImageUpload={() => imageInputRef.current?.click()}
-					/>
-					<div
-						className={clsx(
-							'flex-1 overflow-y-auto min-h-0 chat-messages-scroll w-full',
-							isDebugging && 'animate-debug-pulse',
-						)}
-						ref={messagesContainerRef}
+				<ResizablePanelGroup direction="horizontal" className="flex-1 flex min-h-0 overflow-hidden">
+					<ResizablePanel
+						defaultSize={showMainView ? 40 : 100}
+						minSize={25}
+						className="flex flex-col relative z-10 h-full min-h-0"
 					>
-						<div className="max-w-[720px] mx-auto w-full px-4 pt-5 pb-4 text-base flex flex-col gap-5">
-							{appLoading ? (
-								<div className="flex items-center gap-2 text-text-tertiary">
-									<LoaderCircle className="size-4 animate-spin" />
-									Loading app...
-								</div>
-							) : (
-								<>
-									<UserMessage
-										message={query ?? displayQuery}
-										attachments={
-											sessionImagesFromUrl.length > 0 ? sessionImagesFromUrl : undefined
-										}
-									/>
-								</>
-							)}
+						<motion.div
+							layout="position"
+							className="flex-1 shrink-0 flex flex-col basis-0 max-w-[780px] w-full relative z-10 h-full min-h-0 mx-auto"
+						>
+							<ChatHeader
+								appId={persistedAppId}
+								title={headerTitle}
+								canManage={canManageApp}
+								attachmentCount={attachmentCount}
+								canUploadImages={!isChatDisabled && !isProcessing}
+								onTitleSaved={() => void refetchApp()}
+								onDeleteClick={() => setDeleteChatOpen(true)}
+								onOpenAttachments={() => setAttachmentsOpen(true)}
+								onRequestImageUpload={() => imageInputRef.current?.click()}
+							/>
+							<div
+								className={clsx(
+									'flex-1 overflow-y-auto min-h-0 chat-messages-scroll w-full',
+									isDebugging && 'animate-debug-pulse',
+								)}
+								ref={messagesContainerRef}
+							>
+								<div className="max-w-[720px] mx-auto w-full px-4 pt-5 pb-4 text-base flex flex-col gap-5">
+									{appLoading ? (
+										<div className="flex items-center gap-2 text-text-tertiary">
+											<LoaderCircle className="size-4 animate-spin" />
+											Loading app...
+										</div>
+									) : (
+										<>
+											<UserMessage
+												message={query ?? displayQuery}
+												attachments={
+													sessionImagesFromUrl.length > 0 ? sessionImagesFromUrl : undefined
+												}
+											/>
+										</>
+									)}
 
-							{mainMessage && (
-								<div className="relative">
-									<AIMessage
-										message={mainMessage.content}
-										isThinking={mainMessage.ui?.isThinking}
-										toolEvents={mainMessage.ui?.toolEvents}
-									/>
-									{chatId && (
-										<div className="absolute right-1 top-1">
-											<DropdownMenu>
-												<DropdownMenuTrigger asChild>
-													<Button
-														variant="ghost"
-														size="icon"
-														className="hover:bg-bg-3/80 cursor-pointer"
-													>
-														<MoreHorizontal className="h-4 w-4" />
-														<span className="sr-only">Chat actions</span>
-													</Button>
-												</DropdownMenuTrigger>
-												<DropdownMenuContent align="end" className="w-56">
-													<DropdownMenuItem
-														onClick={(e) => {
-															e.preventDefault();
-															setIsResetDialogOpen(true);
-														}}
-													>
-														<RotateCcw className="h-4 w-4 mr-2" />
-														Reset conversation
-													</DropdownMenuItem>
-												</DropdownMenuContent>
-											</DropdownMenu>
+									{mainMessage && (
+										<div className="relative">
+											<AIMessage
+												message={mainMessage.content}
+												isThinking={mainMessage.ui?.isThinking}
+												toolEvents={mainMessage.ui?.toolEvents}
+											/>
+											{chatId && (
+												<div className="absolute right-1 top-1">
+													<DropdownMenu>
+														<DropdownMenuTrigger asChild>
+															<Button
+																variant="ghost"
+																size="icon"
+																className="hover:bg-bg-3/80 cursor-pointer"
+															>
+																<MoreHorizontal className="h-4 w-4" />
+																<span className="sr-only">Chat actions</span>
+															</Button>
+														</DropdownMenuTrigger>
+														<DropdownMenuContent align="end" className="w-56">
+															<DropdownMenuItem
+																onClick={(e) => {
+																	e.preventDefault();
+																	setIsResetDialogOpen(true);
+																}}
+															>
+																<RotateCcw className="h-4 w-4 mr-2" />
+																Reset conversation
+															</DropdownMenuItem>
+														</DropdownMenuContent>
+													</DropdownMenu>
+												</div>
+											)}
+										</div>
+									)}
+
+									{otherMessages
+										.filter((message) => message.role === 'assistant' && message.ui?.isThinking)
+										.map((message) => (
+											<div key={message.conversationId} className="mb-4">
+												<AIMessage
+													message={message.content}
+													isThinking={true}
+													toolEvents={message.ui?.toolEvents}
+												/>
+											</div>
+										))}
+
+									{isThinking && !otherMessages.some((m) => m.ui?.isThinking) && (
+										<div className="mb-4">
+											<AIMessage
+												message="Planning next phase..."
+												isThinking={true}
+											/>
 										</div>
 									)}
 								</div>
-							)}
 
-							{otherMessages
-								.filter((message) => message.role === 'assistant' && message.ui?.isThinking)
-								.map((message) => (
-									<div key={message.conversationId} className="mb-4">
-										<AIMessage
-											message={message.content}
-											isThinking={true}
-											toolEvents={message.ui?.toolEvents}
+								{/* Plan / phases: full 780px column width */}
+								{behaviorType !== 'agentic' && (
+									<div className="w-full max-w-[780px] mx-auto px-4">
+										<PhaseTimeline
+											projectStages={projectStages}
+											phaseTimeline={phaseTimeline}
+											files={files}
+											view={view}
+											activeFile={activeFile}
+											onFileClick={handleFileClick}
+											isThinkingNext={isThinking}
+											isPreviewDeploying={isPreviewDeploying}
+											progress={progress}
+											total={total}
+											parentScrollRef={messagesContainerRef}
+											onViewChange={(viewMode) => {
+												setView(viewMode);
+												hasSwitchedFile.current = true;
+											}}
+											chatId={chatId}
+											isDeploying={isDeploying}
+											handleDeployToCloudflare={handleDeployToCloudflare}
+											runtimeErrorCount={runtimeErrorCount}
+											staticIssueCount={staticIssueCount}
+											isDebugging={isDebugging}
+											isGenerating={isGenerating}
+											isThinking={isThinking}
 										/>
 									</div>
-								))}
+								)}
 
-							{isThinking && !otherMessages.some((m) => m.ui?.isThinking) && (
-								<div className="mb-4">
-									<AIMessage
-										message="Planning next phase..."
-										isThinking={true}
-									/>
-								</div>
-							)}
-						</div>
-
-						{/* Plan / phases: full 780px column width */}
-						{behaviorType !== 'agentic' && (
-							<div className="w-full max-w-[780px] mx-auto px-4">
-								<PhaseTimeline
-									projectStages={projectStages}
-									phaseTimeline={phaseTimeline}
-									files={files}
-									view={view}
-									activeFile={activeFile}
-									onFileClick={handleFileClick}
-									isThinkingNext={isThinking}
-									isPreviewDeploying={isPreviewDeploying}
-									progress={progress}
-									total={total}
-									parentScrollRef={messagesContainerRef}
-									onViewChange={(viewMode) => {
-										setView(viewMode);
-										hasSwitchedFile.current = true;
-									}}
-									chatId={chatId}
-									isDeploying={isDeploying}
-									handleDeployToCloudflare={handleDeployToCloudflare}
-									runtimeErrorCount={runtimeErrorCount}
-									staticIssueCount={staticIssueCount}
-									isDebugging={isDebugging}
-									isGenerating={isGenerating}
-									isThinking={isThinking}
-								/>
-							</div>
-						)}
-
-						{chatId && behaviorType !== 'agentic' && (
-							<motion.div
-								ref={deploymentControlsRef}
-								initial={{ opacity: 0, y: 20 }}
-								animate={{ opacity: 1, y: 0 }}
-								transition={{ duration: 0.3, delay: 0.2 }}
-								className="px-4 mb-6 w-full max-w-[780px] mx-auto"
-							>
-								<DeploymentControls
-									isPhase1Complete={isPhase1Complete}
-									isDeploying={isDeploying}
-									deploymentUrl={cloudflareDeploymentUrl}
-									instanceId={chatId || ''}
-									isRedeployReady={isRedeployReady}
-									deploymentError={deploymentError}
-									appId={app?.id || chatId}
-									appVisibility={app?.visibility}
-									isGenerating={
-										isGenerating ||
-										isGeneratingBlueprint
-									}
-									isPaused={isGenerationPaused}
-									onDeploy={handleDeployToCloudflare}
-									onStopGeneration={handleStopGeneration}
-									onResumeGeneration={
-										handleResumeGeneration
-									}
-									onVisibilityUpdate={(newVisibility) => {
-										if (app) {
-											app.visibility = newVisibility;
-										}
-									}}
-								/>
-							</motion.div>
-						)}
-
-						<div className="max-w-[720px] mx-auto w-full px-4 pb-4 text-base flex flex-col gap-5">
-							{otherMessages
-								.filter((message) => !message.ui?.isThinking)
-								.map((message) => {
-									if (message.role === 'assistant') {
-										return (
-											<AIMessage
-												key={message.conversationId}
-												message={message.content}
-												isThinking={message.ui?.isThinking}
-												toolEvents={message.ui?.toolEvents}
-											/>
-										);
-									}
-									return (
-										<UserMessage
-											key={message.conversationId}
-											message={message.content}
-											attachments={message.ui?.images}
+								{chatId && behaviorType !== 'agentic' && (
+									<motion.div
+										ref={deploymentControlsRef}
+										initial={{ opacity: 0, y: 20 }}
+										animate={{ opacity: 1, y: 0 }}
+										transition={{ duration: 0.3, delay: 0.2 }}
+										className="px-4 mb-6 w-full max-w-[780px] mx-auto"
+									>
+										<DeploymentControls
+											isPhase1Complete={isPhase1Complete}
+											isDeploying={isDeploying}
+											deploymentUrl={cloudflareDeploymentUrl}
+											instanceId={chatId || ''}
+											isRedeployReady={isRedeployReady}
+											deploymentError={deploymentError}
+											appId={app?.id || chatId}
+											appVisibility={app?.visibility}
+											isGenerating={
+												isGenerating ||
+												isGeneratingBlueprint
+											}
+											isPaused={isGenerationPaused}
+											onDeploy={handleDeployToCloudflare}
+											onStopGeneration={handleStopGeneration}
+											onResumeGeneration={
+												handleResumeGeneration
+											}
+											onVisibilityUpdate={(newVisibility) => {
+												if (app) {
+													app.visibility = newVisibility;
+												}
+											}}
 										/>
-									);
-								})}
-						</div>
-					</div>
+									</motion.div>
+								)}
 
+								<div className="max-w-[720px] mx-auto w-full px-4 pb-4 text-base flex flex-col gap-5">
+									{otherMessages
+										.filter((message) => !message.ui?.isThinking)
+										.map((message) => {
+											if (message.role === 'assistant') {
+												return (
+													<AIMessage
+														key={message.conversationId}
+														message={message.content}
+														isThinking={message.ui?.isThinking}
+														toolEvents={message.ui?.toolEvents}
+													/>
+												);
+											}
+											return (
+												<UserMessage
+													key={message.conversationId}
+													message={message.content}
+													attachments={message.ui?.images}
+												/>
+											);
+										})}
+								</div>
+							</div>
 
-				<ChatInput
-					newMessage={newMessage}
-					onMessageChange={setNewMessage}
-					onSubmit={onNewMessage}
-					images={images}
-					onAddImages={addImages}
-					onRemoveImage={removeImage}
-					isProcessing={isProcessing}
-					isChatDragging={isChatDragging}
-					chatDragHandlers={chatDragHandlers}
-					isChatDisabled={isChatDisabled}
-					isRunning={isRunning}
-					isGenerating={isGenerating}
-					isGeneratingBlueprint={isGeneratingBlueprint}
-					isDebugging={isDebugging}
-					websocket={websocket}
-					chatFormRef={chatFormRef}
-					imageInputRef={imageInputRef}
-				/>
-				</motion.div>
-
-				<AnimatePresence mode="wait">
-					{showMainView && (
-						<motion.div
-							key="main-content-panel"
-							initial={{ opacity: 0 }}
-							animate={{ opacity: 1 }}
-							exit={{ opacity: 0 }}
-							className="flex-1 flex shrink-0 basis-0 py-4 pr-4 pl-2 z-30 min-h-0"
-						>
-							<MainContentPanel
-								view={view}
-								onViewChange={handleViewModeChange}
-								hasDocumentation={hasDocumentation}
-								contentDetection={contentDetection}
-								projectType={projectType}
-								previewUrl={previewUrl}
-								showTooltip={showTooltip}
-								shouldRefreshPreview={shouldRefreshPreview}
-								manualRefreshTrigger={manualRefreshTrigger}
-								onManualRefresh={() => setManualRefreshTrigger(Date.now())}
-								blueprint={blueprint}
-								activeFile={activeFile}
-								allFiles={allFiles}
-								edit={edit}
-								onFileClick={handleFileClick}
+							<ChatInput
+								newMessage={newMessage}
+								onMessageChange={setNewMessage}
+								onSubmit={onNewMessage}
+								messageIntent={messageIntent}
+								onMessageIntentChange={setMessageIntent}
+								images={images}
+								onAddImages={addImages}
+								onRemoveImage={removeImage}
+								isProcessing={isProcessing}
+								isChatDragging={isChatDragging}
+								chatDragHandlers={chatDragHandlers}
+								isChatDisabled={isChatDisabled}
+								isRunning={isRunning}
 								isGenerating={isGenerating}
 								isGeneratingBlueprint={isGeneratingBlueprint}
-								modelConfigs={modelConfigs}
-								loadingConfigs={loadingConfigs}
-								onRequestConfigs={handleRequestConfigs}
-								onGitCloneClick={() => setIsGitCloneModalOpen(true)}
-								isGitHubExportReady={isGitHubExportReady}
-								githubExport={githubExport}
-								behaviorType={behaviorType}
+								isDebugging={isDebugging}
 								websocket={websocket}
-								previewRef={previewRef}
-								editorRef={editorRef}
-								templateDetails={templateDetails}
+								chatFormRef={chatFormRef}
+								imageInputRef={imageInputRef}
 							/>
 						</motion.div>
+					</ResizablePanel>
+
+					{showMainView && (
+						<>
+							<ResizableHandle withHandle className="bg-transparent w-2 hover:bg-border-primary/50 transition-colors" />
+							<ResizablePanel
+								defaultSize={60}
+								minSize={30}
+								className="flex flex-col z-30 min-h-0 py-4 pr-4 pl-2"
+							>
+								<motion.div
+									key="main-content-panel"
+									initial={{ opacity: 0 }}
+									animate={{ opacity: 1 }}
+									exit={{ opacity: 0 }}
+									className="flex-1 flex flex-col min-h-0"
+								>
+									<MainContentPanel
+										canvasArtifact={canvasArtifact}
+										onDismissCanvasArtifact={clearCanvasArtifact}
+										view={view}
+										onViewChange={handleViewModeChange}
+										hasDocumentation={hasDocumentation}
+										contentDetection={contentDetection}
+										projectType={projectType}
+										previewUrl={previewUrl}
+										showTooltip={showTooltip}
+										shouldRefreshPreview={shouldRefreshPreview}
+										manualRefreshTrigger={manualRefreshTrigger}
+										onManualRefresh={() => setManualRefreshTrigger(Date.now())}
+										blueprint={blueprint}
+										activeFile={activeFile}
+										allFiles={allFiles}
+										edit={edit}
+										onFileClick={handleFileClick}
+										isGenerating={isGenerating}
+										isGeneratingBlueprint={isGeneratingBlueprint}
+										modelConfigs={modelConfigs}
+										loadingConfigs={loadingConfigs}
+										onRequestConfigs={handleRequestConfigs}
+										onGitCloneClick={() => setIsGitCloneModalOpen(true)}
+										isGitHubExportReady={isGitHubExportReady}
+										githubExport={githubExport}
+										behaviorType={behaviorType}
+										websocket={websocket}
+										previewRef={previewRef}
+										editorRef={editorRef}
+										templateDetails={templateDetails}
+									/>
+								</motion.div>
+							</ResizablePanel>
+						</>
 					)}
-				</AnimatePresence>
+				</ResizablePanelGroup>
 			</div>
 
 			<ChatModals

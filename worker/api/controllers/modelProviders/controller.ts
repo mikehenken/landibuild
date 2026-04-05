@@ -19,6 +19,16 @@ import {
     TestProviderRequest
 } from './types';
 import { createLogger } from '../../../logger';
+import { validateOpenAiCompatibleBaseUrl } from '../../../services/ssrf/validate-openai-compatible-base-url';
+import {
+	CUSTOM_PROVIDER_CRUD_DISABLED_MESSAGE,
+	CUSTOM_PROVIDER_DELETE_DISABLED_MESSAGE,
+	CUSTOM_PROVIDER_TEST_STORED_DISABLED_MESSAGE,
+} from './messages';
+import {
+	isCustomModelProviderCrudEnabled,
+	userMayManageCustomProviders,
+} from '../../feature-flags/model-providers';
 
 // Validation schemas
 const createProviderSchema = z.object({
@@ -45,6 +55,20 @@ const testProviderSchema = z.object({
 
 export class ModelProvidersController extends BaseController {
     static logger = createLogger('ModelProvidersController');
+
+	private static allowHttpForProviderProbe(env: Env): boolean {
+		return env.ENVIRONMENT === 'development';
+	}
+
+	private static validateStoredBaseUrl(env: Env, baseUrl: string): string | null {
+		const checked = validateOpenAiCompatibleBaseUrl(baseUrl, {
+			allowHttp: ModelProvidersController.allowHttpForProviderProbe(env),
+		});
+		if (!checked.ok) {
+			return checked.reason;
+		}
+		return null;
+	}
 
     /**
      * Get all custom providers for the authenticated user
@@ -98,7 +122,7 @@ export class ModelProvidersController extends BaseController {
 	 * Create a new custom provider
 	 */
 
-    static async createProvider(request: Request, _env: Env, _ctx: ExecutionContext, _context: RouteContext): Promise<ControllerResponse<ApiResponse<ModelProviderCreateData>>> {
+    static async createProvider(request: Request, env: Env, _ctx: ExecutionContext, context: RouteContext): Promise<ControllerResponse<ApiResponse<ModelProviderCreateData>>> {
         try {
             const bodyResult = await ModelProvidersController.parseJsonBody<CreateProviderRequest>(request);
             if (!bodyResult.success) {
@@ -112,12 +136,27 @@ export class ModelProvidersController extends BaseController {
                     400
                 );
             }
-    
 
-            return ModelProvidersController.createErrorResponse<ModelProviderCreateData>(
-                'Custom model providers are temporarily disabled. Please use BYOK (Bring Your Own Key) in the vault settings.',
-                503
-            );
+			const urlReason = ModelProvidersController.validateStoredBaseUrl(env, validation.data.baseUrl);
+			if (urlReason) {
+				return ModelProvidersController.createErrorResponse<ModelProviderCreateData>(
+					`Invalid provider URL: ${urlReason}`,
+					400,
+				);
+			}
+
+			const user = context.user!;
+			if (!isCustomModelProviderCrudEnabled(env) || !userMayManageCustomProviders(env, user.id)) {
+				return ModelProvidersController.createErrorResponse<ModelProviderCreateData>(
+					CUSTOM_PROVIDER_CRUD_DISABLED_MESSAGE,
+					503,
+				);
+			}
+
+			return ModelProvidersController.createErrorResponse<ModelProviderCreateData>(
+				'Saving custom providers is enabled by configuration but vault-backed key storage from this API is not available in this build. Use BYOK in the vault or Test connection with URL + key.',
+				503,
+			);
         } catch (error) {
             return ModelProvidersController.createErrorResponse<ModelProviderCreateData>(
                 'Failed to create provider',
@@ -130,7 +169,7 @@ export class ModelProvidersController extends BaseController {
 	 * Update an existing provider
 	 */
 
-    static async updateProvider(request: Request, _env: Env, _ctx: ExecutionContext, _context: RouteContext): Promise<ControllerResponse<ApiResponse<ModelProviderUpdateData>>> {
+    static async updateProvider(request: Request, env: Env, _ctx: ExecutionContext, context: RouteContext): Promise<ControllerResponse<ApiResponse<ModelProviderUpdateData>>> {
         try {
             const url = new URL(request.url);
             const providerId = url.pathname.split('/').pop();
@@ -151,12 +190,29 @@ export class ModelProvidersController extends BaseController {
                     400
                 );
             }
-    
 
-            return ModelProvidersController.createErrorResponse<ModelProviderUpdateData>(
-                'Custom model providers are temporarily disabled. Please use BYOK (Bring Your Own Key) in the vault settings.',
-                503
-            );
+			if (validation.data.baseUrl) {
+				const urlReason = ModelProvidersController.validateStoredBaseUrl(env, validation.data.baseUrl);
+				if (urlReason) {
+					return ModelProvidersController.createErrorResponse<ModelProviderUpdateData>(
+						`Invalid provider URL: ${urlReason}`,
+						400,
+					);
+				}
+			}
+
+			const user = context.user!;
+			if (!isCustomModelProviderCrudEnabled(env) || !userMayManageCustomProviders(env, user.id)) {
+				return ModelProvidersController.createErrorResponse<ModelProviderUpdateData>(
+					CUSTOM_PROVIDER_CRUD_DISABLED_MESSAGE,
+					503,
+				);
+			}
+
+			return ModelProvidersController.createErrorResponse<ModelProviderUpdateData>(
+				'Updating custom providers is enabled by configuration but not available in this build. Use BYOK in the vault.',
+				503,
+			);
         } catch (error) {
             this.logger.error('Error updating provider:', error);
             return ModelProvidersController.createErrorResponse<ModelProviderUpdateData>('Failed to update provider', 500);
@@ -167,7 +223,7 @@ export class ModelProvidersController extends BaseController {
 	 * Delete a provider
 	 */
 
-    static async deleteProvider(request: Request, _env: Env, _ctx: ExecutionContext, _context: RouteContext): Promise<ControllerResponse<ApiResponse<ModelProviderDeleteData>>> {
+    static async deleteProvider(request: Request, env: Env, _ctx: ExecutionContext, context: RouteContext): Promise<ControllerResponse<ApiResponse<ModelProviderDeleteData>>> {
         try {
             const url = new URL(request.url);
             const providerId = url.pathname.split('/').pop();
@@ -176,10 +232,18 @@ export class ModelProvidersController extends BaseController {
                 return ModelProvidersController.createErrorResponse<ModelProviderDeleteData>('Provider ID is required', 400);
             }
 
-            return ModelProvidersController.createErrorResponse<ModelProviderDeleteData>(
-                'Custom model providers are temporarily disabled.',
-                503
-            );
+			const user = context.user!;
+			if (!isCustomModelProviderCrudEnabled(env) || !userMayManageCustomProviders(env, user.id)) {
+				return ModelProvidersController.createErrorResponse<ModelProviderDeleteData>(
+					CUSTOM_PROVIDER_DELETE_DISABLED_MESSAGE,
+					503,
+				);
+			}
+
+			return ModelProvidersController.createErrorResponse<ModelProviderDeleteData>(
+				CUSTOM_PROVIDER_DELETE_DISABLED_MESSAGE,
+				503,
+			);
         } catch (error) {
             this.logger.error('Error deleting provider:', error);
             return ModelProvidersController.createErrorResponse<ModelProviderDeleteData>('Failed to delete provider', 500);
@@ -190,7 +254,7 @@ export class ModelProvidersController extends BaseController {
 	 * Test provider connection
 	 */
 
-    static async testProvider(request: Request, _env: Env, _ctx: ExecutionContext, _context: RouteContext): Promise<ControllerResponse<ApiResponse<ModelProviderTestData>>> {
+    static async testProvider(request: Request, env: Env, _ctx: ExecutionContext, _context: RouteContext): Promise<ControllerResponse<ApiResponse<ModelProviderTestData>>> {
         try {
             const bodyResult = await ModelProvidersController.parseJsonBody<TestProviderRequest>(request);
             if (!bodyResult.success) {
@@ -208,17 +272,28 @@ export class ModelProvidersController extends BaseController {
 
             if (validation.data.providerId) {
                 return ModelProvidersController.createErrorResponse<ModelProviderTestData>(
-                    'Testing stored providers is temporarily disabled. Please provide baseUrl and apiKey directly.',
+                    CUSTOM_PROVIDER_TEST_STORED_DISABLED_MESSAGE,
                     503
                 );
             }
     
             const baseUrl = validation.data.baseUrl!;
             const apiKey = validation.data.apiKey!;
+
+			const urlCheck = validateOpenAiCompatibleBaseUrl(baseUrl, {
+				allowHttp: ModelProvidersController.allowHttpForProviderProbe(env),
+			});
+			if (!urlCheck.ok) {
+				return ModelProvidersController.createErrorResponse<ModelProviderTestData>(
+					urlCheck.reason,
+					400,
+				);
+			}
+			const safeBase = urlCheck.normalizedBaseUrl;
     
             const startTime = Date.now();
             try {
-                const testUrl = `${baseUrl.replace(/\/$/, '')}/models`;
+                const testUrl = `${safeBase.replace(/\/$/, '')}/models`;
                 const response = await fetch(testUrl, {
                     method: 'GET',
                     headers: {

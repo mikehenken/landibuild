@@ -48,14 +48,14 @@ Running log for **decisions**, **artifact paths**, and **open questions** for th
 | Phase / task_id | Artifact | Status |
 |-----------------|----------|--------|
 | p0-spine-acceptance | `spine.md`, `p0-spine-acceptance/outputs/acceptance-criteria.md` | Complete |
-| p1-sync-script | `scripts/sync-orchestration-bundle.ps1`, `p1-sync-script/outputs/sync-script-notes.md` | Pending |
-| p2-run-sync | Populated `.cursor/orchestration-bundle/`, `p2-run-sync/outputs/sync-run-log.md` | Pending |
-| p3-manifest-and-pilot-skeleton | `manifest.schema.yaml`, pilot skeleton, `study-freeze-checklist.md` | Pending |
-| p4-coordinator-manifest-protocol | Updated `multi-agent-coordinator.md` (global + bundle copy), `protocol-summary.md` | Pending |
-| p5-repoint-paths | SKILL.md, issues index move, docs/rules, `grep-report.md` | Pending |
-| p6-review | `p6-review/outputs/agent-review.md` | Pending |
-| p7-objective-review | `p7-objective-review/outputs/objective-review.md` | Pending |
-| p8-handoff | `p8-handoff/outputs/AGENTS-orchestration-snippet.md` | Pending |
+| p1-sync-script | `scripts/sync-orchestration-bundle.ps1`, `p1-sync-script/outputs/sync-script-notes.md` | Complete |
+| p2-run-sync | Populated `.cursor/orchestration-bundle/`, `p2-run-sync/outputs/sync-run-log.md` | Complete |
+| p3-manifest-and-pilot-skeleton | `manifest.schema.yaml`, pilot skeleton, `study-freeze-checklist.md` | Complete |
+| p4-coordinator-manifest-protocol | Updated `multi-agent-coordinator.md` (global + bundle copy), `protocol-summary.md` | Complete |
+| p5-repoint-paths | SKILL.md, issues index move, docs/rules, `grep-report.md` | Complete |
+| p6-review | `p6-review/outputs/agent-review.md` | Complete |
+| p7-objective-review | `p7-objective-review/outputs/objective-review.md` | Complete |
+| p8-handoff | `p8-handoff/outputs/AGENTS-orchestration-snippet.md` | Complete |
 
 ---
 

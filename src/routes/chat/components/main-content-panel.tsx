@@ -17,8 +17,12 @@ import type { FileType, BlueprintType, BehaviorType, ModelConfigsInfo, TemplateD
 import type { ContentDetectionResult } from '../utils/content-detector';
 import type { GitHubExportHook } from '@/hooks/use-github-export';
 import type { Edit } from '../hooks/use-chat';
+import { ChatCanvasArtifactPane, type ChatCanvasArtifact } from './chat-canvas-artifact-pane';
 
 interface MainContentPanelProps {
+	canvasArtifact?: ChatCanvasArtifact | null;
+	onDismissCanvasArtifact?: () => void;
+
 	// View state
 	view: 'editor' | 'preview' | 'docs' | 'blueprint' | 'terminal' | 'presentation';
 	onViewChange: (mode: 'preview' | 'editor' | 'docs' | 'blueprint' | 'presentation') => void;
@@ -72,6 +76,8 @@ interface MainContentPanelProps {
 
 export function MainContentPanel(props: MainContentPanelProps) {
 	const {
+		canvasArtifact,
+		onDismissCanvasArtifact,
 		view,
 		onViewChange,
 		hasDocumentation,
@@ -385,12 +391,15 @@ export function MainContentPanel(props: MainContentPanelProps) {
 
 	return (
 		<motion.div
-			className="flex-1 flex flex-col overflow-hidden"
+			className="flex-1 flex flex-row min-h-0 min-w-0 gap-2 overflow-hidden"
 			initial={{ opacity: 0, scale: 0.84 }}
 			animate={{ opacity: 1, scale: 1 }}
 			transition={{ duration: 0.3, ease: 'easeInOut' }}
 		>
-			{renderView()}
+			{canvasArtifact && onDismissCanvasArtifact ? (
+				<ChatCanvasArtifactPane artifact={canvasArtifact} onDismiss={onDismissCanvasArtifact} />
+			) : null}
+			<div className="flex-1 flex flex-col overflow-hidden min-w-0">{renderView()}</div>
 		</motion.div>
 	);
 }

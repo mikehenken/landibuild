@@ -7,7 +7,6 @@ import { executeInference } from "../inferutils/infer";
 import { PROMPT_UTILS } from "../prompts";
 import Assistant from "./assistant";
 import { applySearchReplaceDiff } from "../output-formats/diff-formats";
-import { infer } from "../inferutils/core";
 import { MatchingStrategy, FailedBlock } from "../output-formats/diff-formats/search-replace";
 import { AgentActionKey, AIModels, InferenceContext } from "../inferutils/config.types";
 import { AGENT_CONFIG } from "../inferutils/config";
@@ -486,18 +485,18 @@ ${block.error}
 
             const messages = this.save([createUserMessage(diffFixerPrompt)]); 
             
-            const llmResponse = await infer({
+            const llmResponse = await executeInference({
                 env: this.env,
-                metadata: this.inferenceContext.metadata,
+                agentActionName: 'realtimeCodeFixer',
+                context: this.inferenceContext,
+                messages,
                 modelName: AGENT_CONFIG['realtimeCodeFixer'].name,
                 reasoning_effort: 'low',
                 temperature: 0.0,
                 maxTokens: 10000,
-                actionKey:'realtimeCodeFixer',
-                messages,
             });
 
-            if (!llmResponse) {
+            if (!llmResponse?.string) {
                 this.logger.warn("❌ No LLM response received");
                 return null;
             }

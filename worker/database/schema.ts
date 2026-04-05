@@ -494,6 +494,15 @@ export const userModelProviders = sqliteTable('user_model_providers', {
     isActiveIdx: index('user_model_providers_is_active_idx').on(table.isActive),
 }));
 
+/**
+ * Single-row table: bump when platform model catalog / bundle defaults change so clients can refetch.
+ */
+export const modelConfigGlobalRevision = sqliteTable('model_config_global_revision', {
+    id: text('id').primaryKey(),
+    revision: integer('revision').notNull().default(0),
+    updatedAt: integer('updated_at', { mode: 'timestamp' }).default(sql`(unixepoch())`),
+});
+
 // ========================================
 // SYSTEM CONFIGURATION
 // ========================================
@@ -567,6 +576,9 @@ export type UserModelConfig = typeof userModelConfigs.$inferSelect;
 export type NewUserModelConfig = typeof userModelConfigs.$inferInsert;
 export type UserModelProvider = typeof userModelProviders.$inferSelect;
 export type NewUserModelProvider = typeof userModelProviders.$inferInsert;
+
+export type ModelConfigGlobalRevisionRow = typeof modelConfigGlobalRevision.$inferSelect;
+export type NewModelConfigGlobalRevisionRow = typeof modelConfigGlobalRevision.$inferInsert;
 
 export type Star = typeof stars.$inferSelect;
 export type NewStar = typeof stars.$inferInsert;

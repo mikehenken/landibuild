@@ -359,7 +359,25 @@ class ApiClient {
 				return { response, data: null };
 			}
 			
-			const data = await response.json() as ApiResponse<T>;
+			const bodyText = await response.text();
+			let data: ApiResponse<T>;
+			try {
+				data = (bodyText ? JSON.parse(bodyText) : null) as ApiResponse<T>;
+			} catch {
+				const trimmed = bodyText.trimStart();
+				const looksLikeHtml =
+					trimmed.startsWith('<!DOCTYPE') ||
+					trimmed.startsWith('<html') ||
+					trimmed.startsWith('<HTML');
+				throw new ApiError(
+					response.ok ? 502 : response.status,
+					response.statusText || 'Invalid response',
+					looksLikeHtml
+						? 'API returned HTML instead of JSON. The dev Worker may be unreachable or the route did not match.'
+						: 'API response was not valid JSON.',
+					endpoint,
+				);
+			}
 
 			if (!response.ok) {
                 if (

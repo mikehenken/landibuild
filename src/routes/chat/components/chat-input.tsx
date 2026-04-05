@@ -5,6 +5,7 @@ import { X } from 'lucide-react';
 import { ImageAttachmentPreview } from '@/components/image-attachment-preview';
 import { sendWebSocketMessage } from '../utils/websocket-helpers';
 import { SUPPORTED_IMAGE_MIME_TYPES, type ImageAttachment } from '@/api-types';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 
 const MAX_WORDS = 4000;
 const countWords = (text: string): number => {
@@ -42,6 +43,9 @@ interface ChatInputProps {
 	// WebSocket
 	websocket?: WebSocket;
 
+	messageIntent: 'ask' | 'implement';
+	onMessageIntentChange: (intent: 'ask' | 'implement') => void;
+
 	// Refs
 	chatFormRef: RefObject<HTMLFormElement | null>;
 	imageInputRef: RefObject<HTMLInputElement | null>;
@@ -63,6 +67,8 @@ export function ChatInput({
 	isGeneratingBlueprint,
 	isDebugging,
 	websocket,
+	messageIntent,
+	onMessageIntentChange,
 	chatFormRef,
 	imageInputRef,
 }: ChatInputProps) {
@@ -139,6 +145,33 @@ export function ChatInput({
 						/>
 					</div>
 				)}
+				<div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+					<p className="text-xs text-text-tertiary">
+						{messageIntent === 'ask'
+							? 'Ask: chat only (no new codegen from this message).'
+							: 'Build: may start or continue implementation when the agent is idle.'}
+					</p>
+					<ToggleGroup
+						type="single"
+						value={messageIntent}
+						onValueChange={(v) => {
+							if (v === 'ask' || v === 'implement') {
+								onMessageIntentChange(v);
+							}
+						}}
+						disabled={isChatDisabled}
+						variant="outline"
+						size="sm"
+						className="shrink-0"
+					>
+						<ToggleGroupItem value="ask" className="text-xs px-2.5 h-7" aria-label="Ask only">
+							Ask
+						</ToggleGroupItem>
+						<ToggleGroupItem value="implement" className="text-xs px-2.5 h-7" aria-label="Build or implement">
+							Build
+						</ToggleGroupItem>
+					</ToggleGroup>
+				</div>
 				<textarea
 					value={newMessage}
 					onChange={(e) => {

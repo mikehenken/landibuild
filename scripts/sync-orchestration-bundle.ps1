@@ -1,23 +1,32 @@
-#requires -Version 7.2
+#requires -Version 5.1
 <#
 .SYNOPSIS
-  Mirrors OpenCode orchestration skill tree and a fixed agent set into .cursor/orchestration-bundle.
+  Populates the repo-local Cursor bundle at .cursor/orchestration-bundle for landibuild.
 
 .DESCRIPTION
-  - Skills: recursive copy from %USERPROFILE%\.config\opencode\skills\orchestration to
+  Primary consumer: Cursor (plans under .cursor/plans, state under .cursor/state, this bundle).
+
+  - Skills: mirror from %USERPROFILE%\.config\opencode\skills\orchestration to
     <repo>/.cursor/orchestration-bundle/skills/orchestration
+    (OpenCode global remains the usual source of truth for the skill tree; run sync after editing global.)
+
+  - Agents: for each basename in $OrchestrationAgentBasenames:
+      1) If <repo>/.cursor/agents/<name>.md exists, copy that (repo / Cursor wins).
+      2) Else copy from %USERPROFILE%\.config\opencode\agents\<name>.md if present.
+      3) Else skip and warn (missing in both places).
+
   - Excludes (skill tree only): directories node_modules, coverage, dist; files *.tmp
-  - Agents: copies only basenames listed in $OrchestrationAgentBasenames (skip missing sources)
-  - Writes .cursor/orchestration-bundle/bundle-version.txt (UTC ISO timestamp + synced_from paths)
+
+  - Writes .cursor/orchestration-bundle/bundle-version.txt (UTC timestamp, paths, counts).
 
   Excludes are also documented in scripts/sync-orchestration-bundle.syncignore (reference only).
 
 .NOTES
-  Idempotent: safe to re-run; skill destination is mirrored (extra files under the skill tree removed).
+  Idempotent for agents; skill destination is mirrored (/MIR on Windows — extra files under the skill tree removed).
   Fails if the orchestration skill source directory is missing.
 
 .EXAMPLE
-  pwsh -File scripts/sync-orchestration-bundle.ps1
+  powershell -NoProfile -ExecutionPolicy Bypass -File scripts/sync-orchestration-bundle.ps1
 #>
 
 Set-StrictMode -Version Latest
@@ -28,6 +37,7 @@ $RepoRoot = (Resolve-Path -LiteralPath (Join-Path $ScriptDir '..')).Path
 $OpenCodeRoot = Join-Path $env:USERPROFILE '.config\opencode'
 $SkillSource = Join-Path $OpenCodeRoot 'skills\orchestration'
 $AgentsSource = Join-Path $OpenCodeRoot 'agents'
+$RepoAgentsSource = Join-Path $RepoRoot '.cursor\agents'
 $BundleRoot = Join-Path $RepoRoot '.cursor\orchestration-bundle'
 $SkillDest = Join-Path $BundleRoot 'skills\orchestration'
 $AgentsDest = Join-Path $BundleRoot 'agents'
@@ -70,7 +80,8 @@ $OrchestrationAgentBasenames = @(
 )
 
 function Test-IsWindowsPlatform {
-    return ($PSVersionTable.PSPlatform -eq 'Win32NT') -or ([System.Environment]::OSVersion.Platform -eq 'Win32NT')
+    # PS 5.1 has no $PSVersionTable.PSPlatform; rely on OS platform.
+    return [System.Environment]::OSVersion.Platform -eq [System.PlatformID]::Win32NT
 }
 
 function Sync-SkillTree {
@@ -144,31 +155,47 @@ Write-Host "  Dest:   $SkillDest"
 Sync-SkillTree -Source $SkillSource -Destination $SkillDest
 
 $missingAgents = [System.Collections.Generic.List[string]]::new()
-$copiedAgents = [System.Collections.Generic.List[string]]::new()
+$agentsFromRepo = [System.Collections.Generic.List[string]]::new()
+$agentsFromGlobal = [System.Collections.Generic.List[string]]::new()
 
-Write-Host "Syncing orchestration agents..."
+Write-Host "Syncing orchestration agents (repo .cursor/agents wins when present)..."
+Write-Host "  Repo agents:  $RepoAgentsSource"
+Write-Host "  Global agents: $AgentsSource"
 foreach ($base in $OrchestrationAgentBasenames) {
     $name = "$base.md"
-    $from = Join-Path $AgentsSource $name
-    if (-not (Test-Path -LiteralPath $from)) {
-        $missingAgents.Add($name) | Out-Null
-        Write-Warning "Skipping missing agent file: $from"
+    $fromRepo = Join-Path $RepoAgentsSource $name
+    $fromGlobal = Join-Path $AgentsSource $name
+    $to = Join-Path $AgentsDest $name
+
+    if (Test-Path -LiteralPath $fromRepo) {
+        Copy-Item -LiteralPath $fromRepo -Destination $to -Force
+        $agentsFromRepo.Add($name) | Out-Null
         continue
     }
-    $to = Join-Path $AgentsDest $name
-    Copy-Item -LiteralPath $from -Destination $to -Force
-    $copiedAgents.Add($name) | Out-Null
+    if (Test-Path -LiteralPath $fromGlobal) {
+        Copy-Item -LiteralPath $fromGlobal -Destination $to -Force
+        $agentsFromGlobal.Add($name) | Out-Null
+        continue
+    }
+    $missingAgents.Add($name) | Out-Null
+    Write-Warning "Skipping agent (not in repo .cursor/agents and not in global): $name"
 }
 
 $syncedAtUtc = (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ss.fffZ')
+$copiedTotal = $agentsFromRepo.Count + $agentsFromGlobal.Count
 $versionLines = @(
     "synced_at_utc=$syncedAtUtc",
+    "primary_consumer=cursor_landibuild",
     "synced_from_opencode_root=$OpenCodeRoot",
+    "repo_agents_overlay_root=$RepoAgentsSource",
     "skills_source=$SkillSource",
     "agents_source=$AgentsSource",
+    "agents_global_source=$AgentsSource",
     "skills_dest=$SkillDest",
     "agents_dest=$AgentsDest",
-    "agent_files_copied=$($copiedAgents.Count)",
+    "agent_files_from_repo=$($agentsFromRepo.Count)",
+    "agent_files_from_opencode_global=$($agentsFromGlobal.Count)",
+    "agent_files_total_bundle=$copiedTotal",
     "agent_files_missing_skipped=$($missingAgents.Count)"
 )
 Set-Content -LiteralPath $VersionFile -Value $versionLines -Encoding utf8
@@ -176,8 +203,12 @@ Set-Content -LiteralPath $VersionFile -Value $versionLines -Encoding utf8
 Write-Host ""
 Write-Host "bundle-version.txt written: $VersionFile"
 Write-Host ""
-Write-Host "Copied agent files ($($copiedAgents.Count)):"
-foreach ($f in ($copiedAgents | Sort-Object)) {
+Write-Host "Agent files from repo .cursor/agents ($($agentsFromRepo.Count)):"
+foreach ($f in ($agentsFromRepo | Sort-Object)) {
+    Write-Host "  $f"
+}
+Write-Host "Agent files from OpenCode global only ($($agentsFromGlobal.Count)):"
+foreach ($f in ($agentsFromGlobal | Sort-Object)) {
     Write-Host "  $f"
 }
 if ($missingAgents.Count -gt 0) {

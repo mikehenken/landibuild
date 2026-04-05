@@ -1,160 +1,107 @@
-# Agent Review: Phase 4A — Research bundle (`p4a-review-research`)
+# Phase 4A — Independent research review (`p4a-review-research`)
 
-**Iteration:** 2 of 3 (quality threshold **0.90**; `fail_safe: reject` on missing citations where claims need them or repo conflicts)  
-**Reviewer:** architect-reviewer  
-**Reviewer CoT:** Re-read canonical bundle end-to-end after **1C** merge; compared §B/§C to iteration-1 gaps (G-1, G-2, G-6); spot-checked repo anchors (`AGENT_CONFIG`, `testProvider` fetch); confirmed `p1c-research-byok-tenancy-ssrf` on-disk outputs; enumerated **all** residual auditability and follow-up items per [agent-review-cycle](file://C:/Users/mikeh/Projects/landi/landibuild/.cursor/agents/orchestration/features/agent-review-cycle.md) exhaustive-gap rules.
-
-**Reviewed work:** `.cursor/state/research-bundles/model-config-byok-canvas-2026-04-04.md` (Phase 1 merged via §I; §A–H; Coordinator review; Intent→DoD trace).
-
-**Prior iteration:** Iteration 1 scored **85/100** and **Needs Rework** primarily for **SC-3** (§B/§C citations). Context-manager supplement recorded p1c landing; this pass is the formal **re-score** after bundle amendment.
+**Role:** architect-reviewer (independent of Phase 1A–1D primary authors).  
+**Reviewed artifact:** `.cursor/state/research-bundles/model-config-byok-canvas-2026-04-04.md`  
+**Cross-check:** Journal Phase 1 folders under `.development/journal/planning/model-config-byok-agui-canvas-orchestration/p1*/`  
+**Intent / goals source:** `p0-intent-and-scope/intent-analysis.md` (explicit goals 1–6)  
+**Approval threshold:** 90% of 100 points.
 
 ---
 
-## Success criteria (explicit, verifiable)
+## Quality score (/100)
 
-| ID | Criterion |
-|----|-----------|
-| SC-1 | Canonical bundle exists, revision notes **1C** merge, and **§I.0** maps tracks **1A–1D** to merged content. |
-| SC-2 | **Repo-grounded** claims in the bundle match the codebase (spot-checked high-risk anchors). |
-| SC-3 | **§B** and **§C** industry/security/outbound-fetch claims include **inline markdown links** and/or pointers to journal `citation.yaml` (satisfies plan `fail_safe` citation bar for those sections). |
-| SC-4 | Section map, **§I** provenance, Coordinator review, and **Intent → deliverable trace** are mutually consistent (no contradictory merge status). |
-| SC-5 | Plan **scope outcomes 1–6** each have **identifiable** research coverage in the bundle (section or **§I** digest pointer). |
-| SC-6 | Phase **1 merge gate** from plan: **1A–1D** folded into canonical bundle — satisfied. |
-| SC-7 | This `agent-review.md` satisfies [agent-review-cycle](file://C:/Users/mikeh/Projects/landi/landibuild/.cursor/agents/orchestration/features/agent-review-cycle.md): **quality score**, **exhaustive gap list**, **Proof table** per criterion, **approval status**, **self-review**. |
+| Factor | Max | Score | Rationale |
+|--------|-----|-------|-----------|
+| Repo factual accuracy (spot-checked claims) | 35 | 34 | All high-risk code claims verified; minor line-range imprecision vs current files (e.g. `resolveModelConfig` starts at L34, not L28). |
+| External / normative citations (SSRF, fetch, industry BYOK) | 25 | 23 | OWASP, WHATWG, Cloudflare, LiteLLM, OpenRouter documented in `p1c-research-byok-tenancy-ssrf/citation.yaml` with URLs; bundle §B leans on “see p1c” for some industry points rather than duplicating links in-body. |
+| Completeness vs Phase 1 merge + goals 1–6 | 25 | 24 | §A–§I.5 cover all six goals; §H correctly defers open spikes. |
+| Internal consistency (bundle ↔ journal map §I.0) | 15 | 14 | Provenance table matches on-disk `p1a`–`p1d`; FINAL pointer defers Phase 6 (expected). |
 
-**Review criteria:** Evidence quality, completeness vs Phase 1 merge gate, internal consistency, factual accuracy vs `landibuild`, citation adequacy for `fail_safe`, coverage of outcomes 1–6.
+**Total: 95 / 100** (95%)
 
 ---
 
-## Quality score
+## Strengths
 
-| Factor | Score (max) | Notes |
-|--------|-------------|-------|
-| Evidence quality | 28 / 30 | §B/§C now cite LiteLLM, OpenRouter BYOK, OWASP SSRF, Workers `fetch`, plus journal `citation.yaml`. Minor deduction: open-canvas **MIT** still explicitly “verify before reuse”; external URLs not HTTP-validated in this pass. |
-| Completeness | 25 / 25 | **1A–1D** represented in §I; **1C** on disk and merged into §B, §C, §I.5; **gaps-vs-goals** pointer in §I.4. |
-| Consistency | 20 / 20 | `CodeGeneratorAgent` vs legacy doc name; merge narrative aligns with Coordinator table and H. |
-| Accuracy | 15 / 15 | Spot-checked repo matches bundle (see Proof). |
-| Formatting / structure | 10 / 10 | Section map, digests, and traces are navigable. |
-
-**Total score:** 98 / 100  
-
-**Content tasks — AI Detection gate:** Not applicable.
-
-**Approval threshold:** 90% (0.90) — **met** (98%).
+- **High-signal defects** (recursive `infer` dropping `runtimeOverrides`, `realtimeCodeFixer` bypassing merged context, disabled `SESSION_INIT`, idle `handleUserInput` → `generateAllFiles`, `testProvider` SSRF class risk, 503 custom-provider CRUD) are tied to **concrete paths** and match the repository on spot-check.
+- **Single canonical bundle** with supersession note and §I.0 provenance reduces forked “final” markdown drift.
+- **Phase 1C** merges BYOK/tenancy/SSRF with a **machine-readable** `citation.yaml` (URLs + codebase anchors).
+- **CodeGeneratorAgent** vs legacy doc naming is called out consistently with `worker/agents/core/codingAgent.ts` and `worker/index.ts`.
+- **Goals 1–4** gap tables in §I.5 are actionable for Phase 2+ without pretending implementation is in scope.
 
 ---
 
-## Findings
+## Gaps / issues (full list, with severity)
 
-### Strengths
+| ID | Topic | Severity | Detail |
+|----|--------|----------|--------|
+| G-1 | Line anchors in bundle | Low | A few ranges are “comment-inclusive” or shifted by a few lines vs current tree (`infer.ts` merge logic L34–96; `testProvider` fetch L221–228). Refresh on next bundle edit. |
+| G-2 | §B industry patterns | Low | LiteLLM / OpenRouter claims are **indirect** in bundle prose (pointers to `citation.yaml`); acceptable for `fail_safe` if journal is treated as part of the deliverable set. |
+| G-3 | “Six+ keys unconstrained” | Info | Seven keys are registered in `AGENT_CONSTRAINTS`; several `AgentActionKey` surfaces (e.g. `blueprint`, `phaseImplementation`, `deepDebugger`) lack map entries—**directionally right**; exact count depends on enum coverage. |
+| G-4 | Grepped tenancy negative | Medium (epistemic) | “No `agency|…` in `worker/**/*.ts`” is **time-stamped** in p1c; re-grep on future branches before relying on for compliance. |
+| G-5 | §H unknowns | Low (expected) | AG-UI schema vs `websocketTypes`, CopilotKit + React 19, agency RBAC—correctly listed as follow-ups, not as present facts. |
+| G-6 | Prior review artifact quality | Info | An earlier `agent-review.md` iteration cited a bundle header string **not present** in the current canonical file; this review does **not** treat that as a bundle defect. |
 
-- **fail_safe remediation:** §B and §C carry concrete URLs and journal anchors; **§I.5** digests **p1c** outputs — iteration-1 **G-1**, **G-2**, **G-6** are **closed**.
-- **Honest scope boundaries:** Agency/super-admin absence, 503 CRUD, `testProvider` SSRF surface, and inference bypass paths are stated with code paths or grep posture.
-- **Outcome coverage:** Dynamic config, admin providers, mixing models, bundles, AG-UI/canvas, and ask mode each have a home in §A–F and §I.1–I.3.
-- **Coordinator transparency:** Known **planning-output gaps** (path combos, cost, Bifrost) are named in-bundle rather than omitted.
-
-### Gaps / issues (exhaustive list — every residual auditability item or follow-up)
-
-Residual items below are **not** automatic fails for Phase 4A after merge; they are the **complete** set of remaining shortcomings, unknowns, or unverified items so a fixer can address them in one pass if desired.
-
-| ID | Location / topic | Severity | Issue | Action (if any) |
-|----|------------------|----------|-------|-----------------|
-| R-1 | §E; Coordinator review | **Low** (compliance) | Open-canvas **MIT** license called out as needing verification against upstream repo `LICENSE` before reuse. | Add footnote with link to raw `LICENSE` on default branch or quote SPDX identifier after fetch. |
-| R-2 | Coordinator review — “Gaps in planning output” | **Low** (planning depth) | Path **combinations** (e.g. 2+4), **cost** estimation, and **Bifrost** cross-repo reconciliation are explicitly listed as missing from the **planning** narrative inside the research bundle. | Address in **Phase 2–6** artifacts, not as Phase 1 defect. |
-| R-3 | §H.1 | **Low** (expected unknown) | AG-UI event schema vs `websocketTypes` — spike still open. | Time-boxed spike per §I.3 / §H. |
-| R-4 | §H.2 | **Low** (expected unknown) | SSRF implementation detail (allowlist, IP validation library, redirects) — engineering sign-off before widening probes/CRUD. | Security design review. |
-| R-5 | §H.3 | **Low** (expected unknown) | CopilotKit + **React 19 / Vite** pairing not confirmed. | npm/docs check before adopting client packages. |
-| R-6 | §H.4 | **Low** (expected unknown) | Agency identity in D1 — product/schema work. | Out of current worker scope; document in roadmap. |
-| R-7 | §H.5 | **Low** (expected unknown) | `realtimeCodeFixer` vs `executeInference` parity. | Trace + align in implementation epic. |
-| R-8 | §H.6 | **Low** (expected unknown) | BYOK template set vs new providers — silent omission risk. | Extend templates + vault loop consistently. |
-| R-9 | All external URLs in bundle | **Low** (audit) | This review **did not** HTTP(S) validate every cited URL (404/redirect). | Optional link-check pass before external publication. |
-| R-10 | §C code anchor | **Info** | Bundle cites `testProvider` ~219–228; repo `fetch` spans **221–228** (`worker/api/controllers/modelProviders/controller.ts`). | Cosmetic; refresh line ranges on next bundle edit. |
-| R-11 | Research vs normative specs | **Info** | **docs.ag-ui.com** / **a2ui.org** called out as normative for implementation; full protocol diff vs PartySocket not completed in Phase 1 (spike). | Expected per out-of-scope implementation. |
-
-**Iteration-1 gap closure (for audit trail):**
-
-| Old ID | Status |
-|--------|--------|
-| G-1 §B industry citations | **Closed** — LiteLLM virtual keys, OpenRouter BYOK URLs in bundle §B. |
-| G-2 §C SSRF citations | **Closed** — OWASP SSRF cheat sheet, Cloudflare Workers `fetch` in §C. |
-| G-3 §E MIT | **Open** — carried as **R-1** (severity lowered; deferral is explicit). |
-| G-4 grep staleness | **Accepted** — dated bundle; re-grep on refresh. |
-| G-5 plan diagram vs run order | **Out of scope** for bundle content; coordinator **state_file** owns execution order. |
-| G-6 p1c absent | **Closed** — `p1c-research-byok-tenancy-ssrf/outputs/*` and `citation.yaml` present. |
-
-### Evidence check
-
-- [x] Repo claims spot-checked against `landibuild` workspace.
-- [x] Citations present where iteration 1 flagged `fail_safe` risk (**§B**, **§C**).
-- [x] **Hallucination check:** No false repo claims found in sample; full line-by-line repo audit not performed (explicitly out of scope for 4A).
-
-### AI detection
-
-- N/A.
-
-### Proof (required — mapped to success criteria)
-
-| criterion_met | Criterion ID | Evidence type | Artifact path | Method | Scope |
-|---------------|--------------|---------------|---------------|--------|-------|
-| yes | SC-1 | artifact | `.cursor/state/research-bundles/model-config-byok-canvas-2026-04-04.md` | Read header (“**amended:** Phase **1C**”), §I.0 table | 1A–1D merge provenance |
-| yes | SC-2 | code | `worker/agents/inferutils/config.ts` | Read L197–199 | `AGENT_CONFIG` uses truthy `PLATFORM_MODEL_PROVIDERS` |
-| yes | SC-2 | code | `worker/api/controllers/modelProviders/controller.ts` | Read L193–228 | `testProvider` performs `GET` to user `baseUrl` + `/models`; stored provider test returns 503 |
-| yes | SC-3 | artifact | Same bundle | Read §B (Sources: LiteLLM, OpenRouter URLs), §C (OWASP, Workers fetch), §I.5 journal pointers | Inline links + `citation.yaml` path |
-| yes | SC-4 | artifact | Same bundle | Cross-check section map, Coordinator review, Intent→DoD table, §H vs §I.0 | No merge contradiction |
-| yes | SC-5 | artifact | Same bundle | Map outcomes: **1** §A/§I.1; **2** §C/§I.1/§I.5; **3** §I.1/§I.4; **4** §D/§I.1; **5** §E/§I.3; **6** §F/§I.2 | Coverage by section |
-| yes | SC-6 | artifact + disk | Bundle §I.0–§I.5; `.development/journal/planning/.../p1c-research-byok-tenancy-ssrf/` | Glob journal outputs | Merge gate **1A–1D** satisfied |
-| yes | SC-7 | artifact | This file | Structure inspection | Score, gaps, Proof, approval, self-review |
-
-If any Success Criterion lacked proof, **Approval Status** would be **Needs Rework** per [qa-proof-requirements](file://C:/Users/mikeh/Projects/landi/landibuild/.cursor/agents/orchestration/features/qa-proof-requirements.md).
-
-### Consistency check
-
-- Score reflects closed citation gap and intact accuracy.
-- **R-1** is the main carry-forward from iteration 1; it is **Low** severity and explicitly scoped to **compliance reuse**, not research truth claims.
+**fail_safe evaluation:** External security/industry claims are backed by `p1c-research-byok-tenancy-ssrf/citation.yaml`. Spot-checked **repo facts do not contradict** the bundle. **No automatic sub-90% trigger.**
 
 ---
 
-## Recommendations
+## Proof table — plan outcomes (goals 1–6)
 
-1. **Optional polish:** Close **R-1** with a single verified `LICENSE` link in §E before any downstream doc cites MIT for open-canvas.
-2. **Phase 2+:** Use Coordinator-listed gaps (**R-2**) as inputs to `p2-architect-paths` and platform architecture (Bifrost, cost, path combos).
-3. **Engineering:** Track **R-3–R-8** as spike/epic backlog items; they are correctly labeled unknowns in §H.
+Goals defined in `p0-intent-and-scope/intent-analysis.md` §2.
+
+| Goal | Bundle coverage | Repo / citation evidence (spot-check) |
+|------|-----------------|--------------------------------------|
+| **1 — Dynamic provider/model configuration** | §A, §I.1, §I.5 Goal 1 table | ```197:199:worker/agents/inferutils/config.ts``` `AGENT_CONFIG` from truthy `env.PLATFORM_MODEL_PROVIDERS`. ```34:46:worker/agents/inferutils/infer.ts``` `resolveModelConfig` user-over-default merge. |
+| **2 — Admin-scoped OpenAI-compatible endpoints; outbound + secrets** | §B, §C, §I.3, §I.5 Goal 2 | ```117:120:worker/api/controllers/modelProviders/controller.ts``` create 503; ```156:159:worker/api/controllers/modelProviders/controller.ts``` update 503; ```179:181:worker/api/controllers/modelProviders/controller.ts``` delete 503; ```221:228:worker/api/controllers/modelProviders/controller.ts``` `fetch(testUrl)` to user `baseUrl` + `/models`. External: `OWASP-CSS-SSRF-Prevention`, `WHATWG-Fetch-RequestRedirect` in `p1c-research-byok-tenancy-ssrf/citation.yaml`. |
+| **3 — Cross-provider mixing; policy gaps** | §I.1, §I.5 Goal 3, exec summary | ```204:219:worker/agents/inferutils/infer.ts``` `executeInference` passes `runtimeOverrides`. ```946:985:worker/agents/inferutils/core.ts``` recursive `infer({...})` **omits** `runtimeOverrides`. ```489:498:worker/agents/assistants/realtimeCodeFixer.ts``` `infer` without `runtimeOverrides`. ```306:314:worker/agents/operations/PhaseGeneration.ts``` `reasoning_effort` bump uses `AGENT_CONFIG.phaseGeneration`. ```226:257:worker/agents/inferutils/config.ts``` `AGENT_CONSTRAINTS` map. ```25:28:worker/api/controllers/modelConfig/constraintHelper.ts``` unconstrained when no map entry. |
+| **4 — Named preset bundles + precedence** | §D, §I.5 Goal 4 | ```56:199:worker/agents/inferutils/config.ts``` two static configs at load; no named bundle IDs in code (bundle sketch §G aligns with gap, not implemented). |
+| **5 — Canvas + AG-UI / A2UI** | §E, §I.4 | Seams cited: `worker/agents/core/websocket.ts`, `src/routes/chat/utils/handle-websocket-message.ts`. Verified client handler: ```891:891:src/routes/chat/utils/handle-websocket-message.ts``` `case 'conversation_response'`. Normative refs deferred to p1d `citation.yaml` / §E (protocol spike, not implemented). |
+| **6 — Ask mode in any chat** | §F, §I.2 | ```667:673:src/routes/chat/chat.tsx``` `user_suggestion` payload has **no** `mode`. ```139:171:worker/agents/core/websocket.ts``` `USER_SUGGESTION` → `handleUserInput`. ```508:524:worker/agents/core/codingAgent.ts``` idle → `generateAllFiles()`. ```33:38:worker/api/controllers/agent/controller.ts``` `phasic` / `agentic` ≠ product ask-only. |
+
+**Additional spot-checks (bundle executive summary):**
+
+| Claim | Evidence |
+|--------|----------|
+| `SESSION_INIT` disabled | ```21:25:worker/agents/core/websocket.ts``` commented `setRuntimeOverrides`. |
+| `getInferenceContext` forces fixer flags false | ```342:352:worker/agents/core/behaviors/base.ts``` `enableFastSmartCodeFix` / `enableRealtimeCodeFix` false; still passes `runtimeOverrides` from `getRuntimeOverrides()`. |
+| DO `onStart` loads D1 configs, no vault replay | ```205:209:worker/agents/core/codingAgent.ts``` `getUserModelConfigs` + `setUserModelConfigs` only. |
+| `getApiKey` prefers `runtimeOverrides.userApiKeys` | ```277:288:worker/agents/inferutils/core.ts``` |
 
 ---
 
-## Change requests
+## Evidence check
 
-| ID | Finding | Root cause | Target phase | Description |
-|----|---------|------------|--------------|-------------|
-| CR-1 | MIT reuse not proven in-bundle | Upstream verification not in research scope | Optional / Phase 6 | Add LICENSE pointer or drop “MIT” until verified (**R-1**). |
+- [x] Canonical bundle read end-to-end.
+- [x] Journal §I.0 tracks verified against on-disk `p1a`–`p1d` outputs (glob + file presence).
+- [x] Mandatory spot-check files read: `config.ts`, `core.ts` (946–987), `modelProviders/controller.ts`, `handle-websocket-message.ts` (conversation_response), `codingAgent.ts` (onStart, handleUserInput); plus corroborating `infer.ts`, `websocket.ts`, `base.ts`, `realtimeCodeFixer.ts`, `PhaseGeneration.ts`, `agent/controller.ts`, `chat.tsx`, `constraintHelper.ts`.
+- [x] Tenancy negative claim: `rg` `agency|superAdmin|super_admin|tenant` on `worker/**/*.ts` → **no matches** in this workspace snapshot.
 
-No change request required to pass **4A** after **1C** merge and §B/§C citations.
+## Hallucination check
+
+- **No contradictions** found between bundle assertions and the spot-checked code paths above.
+- **Recursive BYOK loss:** Confirmed—`infer` destructures `runtimeOverrides` at ```561:561:worker/agents/inferutils/core.ts``` but nested calls at ```948:966:worker/agents/inferutils/core.ts``` / ```970:985:worker/agents/inferutils/core.ts``` do not pass it.
+- **Not verified in this pass:** Full enum-level count of unconstrained actions; every external URL HTTP status; entire worker tree beyond grep tenancy check.
 
 ---
 
 ## Approval status
 
-- [x] **Approved** — Score **≥ 90%**; all Success Criteria **proven**; `fail_safe` citation/repo rules **met** for reviewed sections
-- [ ] **Conditional**
-- [ ] **Needs Rework**
+**Approved** — **95/100** (above 90% threshold).
 
-**Selected:** **Approved.** **98/100.** Iteration **2/3** closes prior **SC-3** failure; no repo factual conflicts identified.
+**Rationale:** Repo-grounded claims in the canonical bundle and Phase 1 journal alignment hold under independent spot-check. External SSRF/BYOK references are registered in `p1c` `citation.yaml` with URLs. Residual items are **low/epistemic** (line drift, re-grep, open spikes in §H), not blockers under the stated `fail_safe`.
 
 ---
 
-## Self-review (Definition of Done / quality gates)
+## Self-review (deliverable completeness)
 
-| Gate | Pass? |
-|------|-------|
-| Reviewed canonical research bundle (Phase 1 as merged) | Yes |
-| Iteration **2/3**, threshold **0.90**, `fail_safe` evaluated | Yes |
-| Score + **exhaustive** gap list per coordinator rules | Yes (includes resolved G-1/G-2/G-6 + full **R-*** residual list) |
-| **Proof** table with `criterion_met` for **each** Success Criterion | Yes |
-| Output path: `journal_root/p4a-review-research/agent-review.md` | Yes |
-| Self-review subsection completed | Yes |
+| Item | Status |
+|------|--------|
+| Quality table /100 + 90% threshold | Yes |
+| Strengths + full gaps with severity | Yes |
+| Proof table × goals **1–6** + code paths / citations | Yes |
+| Evidence + hallucination sections | Yes |
+| Approval status | Yes |
+| Output path | `.development/journal/planning/model-config-byok-agui-canvas-orchestration/p4a-review-research/agent-review.md` |
 
-**Note:** This file **replaces** the iteration-1 body as the current authoritative 4A review; git history retains iteration 1 if needed.
-
----
-
-*End of agent review (Phase 4A, iteration 2).*
+*End of Phase 4A independent review.*

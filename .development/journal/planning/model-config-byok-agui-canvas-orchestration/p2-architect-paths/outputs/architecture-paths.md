@@ -2,9 +2,10 @@
 
 **Task:** `p2-architect-paths`  
 **Agent:** architect-reviewer  
-**Date:** 2026-04-04  
-**Depends on:** Phase 1 merged into `.cursor/state/research-bundles/model-config-byok-canvas-2026-04-04.md`  
-**Upstream scope:** `.cursor/plans/model-config-byok-agui-canvas-orchestration.plan.md`
+**Date:** 2026-04-04 (refreshed 2026-04-05 — Path 7 + Phase 3 handoff aligned with `path-comparison-table.md`)  
+**Depends on:** Phase 1 merged into `.cursor/state/research-bundles/model-config-byok-canvas-2026-04-04.md` (optional deeper read: `model-config-byok-canvas-FINAL-2026-04-04.md`)  
+**Upstream scope:** `.cursor/plans/model-config-byok-agui-canvas-orchestration.plan.md`  
+**Companion matrix:** `path-comparison-table.md`
 
 This document enumerates **credible architectural directions** for goals 1–6 in that plan. It is **planning only** (no implementation). Repo-grounded observations (e.g. `AGENT_CONFIG` / `PLATFORM_MODEL_PROVIDERS` semantics, `ModelProvidersController` 503, absence of agency tables) are summarized in the canonical research bundle **§I.1**; this file focuses on **options and tradeoffs**.
 
@@ -125,11 +126,28 @@ This document enumerates **credible architectural directions** for goals 1–6 i
 
 ---
 
+## Path 7 — Immutable bundle artifacts (R2/KV) + resolver pairing
+
+**Idea:** Store **versioned preset bundle payloads** (JSON or signed blobs) in **R2** or **KV** as **immutable artifacts**; D1 holds **pointers** (hash, URI, effective window) and assignment precedence (platform → agency → user) consumed by the same **resolution service** as Path 2 (or snapshots fed from Path 4). New bundle “editions” are **append-only**; roll forward / rollback toggles the pointer, not the blob.
+
+| Dimension | Assessment |
+|-----------|------------|
+| **Pros** | **G4** gets **audit-grade** history and **SKU-like** releases without standing up full Path 4; reduces accidental drift (“what was bundle v3?”); pairs cleanly with Path **2** (policy in D1, blobs immutable). |
+| **Cons** | **Publish pipeline** (validate, upload, GC old refs); **consistency** between pointer and blob if partial writes fail; debugging requires **artifact browser** discipline. |
+| **Fit on Workers** | Strong: R2/KV are first-class; Worker reads bundle once per resolve / caches in DO; no extra hop on every token—similar to snapshot caching in Path 2. |
+| **Rough migration cost** | **M–L** additive: storage bindings, upload path, schema for pointers, integration with bundle resolver; **not** a substitute for Path 2’s catalog if **G1–G3** need row-level policy. |
+| **Tradeoffs** | Operational clarity for **G4** vs another moving part; **does not** by itself deliver **G5** or **G6**—always **pair** with **2** (or 4). |
+
+**Best when:** **G4** needs **immutable rollback**, compliance-friendly bundle history, or a **clean split** between “published bundle bytes” and “who is assigned which pointer”—without adopting the full **control plane / data plane** split of Path 4.
+
+---
+
 ## Composable strategies (how paths combine)
 
 | Combination | Rationale |
 |-------------|-----------|
 | **2 + 5** | **Recommended default composite** when viability holds: D1 resolves **policy and bundles**; PartySocket+DO exposes **AG-UI-shaped** streams for canvas without externalizing codegen. |
+| **2 + 5 + 7** | **G4** emphasis: Path **7** adds **immutable** bundle blobs + pointers while **2** remains SoT for assignments and **5** for canvas / AG-UI—avoids full Path 4 if admin scale does not require a separate control plane. |
 | **2 + 3** | D1 stores **tenant → gateway endpoint + credential ref**; gateway owns provider map; landi avoids per-customer base URL `fetch` (SSRF shifts to gateway hardening). |
 | **4 + 2** | Control plane owns admin CRUD; data plane Worker reads only snapshots—good for large orgs / multi-app catalogs. |
 | **1 + 5** | Short-term: minimal policy change while spiking **AG-UI envelope** (risk: policy debt accumulates if 2 is deferred too long). |
@@ -139,6 +157,8 @@ This document enumerates **credible architectural directions** for goals 1–6 i
 ## Preferred path if viability holds
 
 **Primary recommendation:** **Path 2 (D1-backed catalog + resolution in Worker)** for configuration, bundles, BYOK/admin provider story, and ask-mode **server enforcement** hooks, combined with **Path 5 (AG-UI / A2UI adapter on PartySocket + phased generative UI)** for the canvas / protocol alignment.
+
+- **Path 7** is **additive** when **G4** needs immutable bundle artifacts and rollback discipline; it **strengthens audit** and release hygiene paired with **2** (and **5** for UX)—it is **not** a stand-in for **G5** or **G6** alone.
 
 **Rationale (aligned with scope stance):**
 
@@ -157,6 +177,22 @@ This document enumerates **credible architectural directions** for goals 1–6 i
 
 ---
 
+## Phase 3 — Feasibility handoff (what to resolve next)
+
+For each path **1–7**, Phase 3 (`p3-feasibility-crosscheck`) should return **feasible / needs spike / blocked** with **Worker / D1 / DO** reasoning (see `path-comparison-table.md` § Phase 3 prompt hook).
+
+| Tension | Why it matters |
+|---------|----------------|
+| **`ModelProvidersController` 503** vs **`testProvider`** | CRUD may be disabled while probes still `fetch` user `baseUrl`; security and UX story must stay consistent (SSRF row in comparison table). |
+| **`runtimeOverrides`** | Override semantics must not bypass the resolved catalog unless **one** choke point defines precedence. |
+| **`SESSION_INIT`** / bootstrap | Session start assumptions affect how a **resolved config snapshot** is applied on connect. |
+| **`realtimeCodeFixer`** (and similar) | Inference paths outside unified resolution undermine **G3** and Path 2’s single-policy claim. |
+| Idle **`handleUserInput`** / **G6** | Ask mode needs a **server** gate for repo/codegen side effects, not UI-only mode. |
+
+**Code anchors (re-verify in Phase 3):** `worker/agents/inferutils/config.ts`, `worker/agents/inferutils/infer.ts`, `worker/agents/inferutils/core.ts`, `worker/api/controllers/modelConfig/byokHelper.ts`, `worker/api/controllers/modelProviders/controller.ts`.
+
+---
+
 ## Quick matrix (full table also in `path-comparison-table.md`)
 
 | Path | Goals 1–4 | Goal 5 AG-UI | Goal 6 ask | Worker fit | Migration |
@@ -167,6 +203,7 @@ This document enumerates **credible architectural directions** for goals 1–6 i
 | 4 Control + data plane | Strong | Neutral | Strong | Medium–High | L–XL |
 | 5 AG-UI on PartySocket | Neutral | Strong | Neutral (pairs with 2) | High | M–L |
 | 6 Hybrid external graph | Varies | Medium (demo) | Risky | Split | XL |
+| 7 R2/KV bundle artifacts | Neutral alone; strong G4 with 2 | Neutral | Neutral (pairs with 2) | High (storage + resolve) | M–L |
 
 ---
 

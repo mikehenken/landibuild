@@ -5,7 +5,8 @@ Running log for **decisions**, **artifact paths**, **open questions**, and **bun
 **Journal root:** `.development/journal/planning/model-config-byok-agui-canvas-orchestration`  
 **Plan:** `.cursor/plans/model-config-byok-agui-canvas-orchestration.plan.md`  
 **State file:** `.cursor/state/model-config-byok-agui-canvas-orchestration.state.md`  
-**Canonical research bundle:** `.cursor/state/research-bundles/model-config-byok-canvas-2026-04-04.md`
+**Canonical research bundle:** `.cursor/state/research-bundles/model-config-byok-canvas-2026-04-04.md` (Phase 1 merge + section map through Planning / p2–p3)  
+**FINAL deliverable (return path):** `.cursor/state/research-bundles/model-config-byok-canvas-FINAL-2026-04-04.md`
 
 ---
 
@@ -30,16 +31,18 @@ Running log for **decisions**, **artifact paths**, **open questions**, and **bun
 | Merge gate | Updates to canonical research bundle + this spine map | **Complete** — Phase 1 **1A–1D** including **p1c** merged into canonical bundle |
 | p2-architect-paths | `p2-architect-paths/outputs/architecture-paths.md`, `p2-architect-paths/outputs/path-comparison-table.md` | **Complete** (2026-04-04) — preferred composite **Path 2 + Path 5** if viability holds; Phase 3 consumes for feasibility |
 | p3-feasibility-crosscheck | `p3-feasibility-crosscheck/outputs/feasibility-crosscheck.md`, `spike-backlog.md` | **Complete** (2026-04-04) |
-| p4a / p4b | `agent-review.md` under review task folders | Pending |
-| p5-objective-review | `objective-review.md` | Pending |
-| p6-final-report | Canonical bundle `.cursor/state/research-bundles/model-config-byok-canvas-2026-04-04.md` — **`## Final report`** (Phase 6) | **Complete** (2026-04-04) |
+| p4a-review-research | `p4a-review-research/agent-review.md` | **Complete** (2026-04-04 refresh) — 4A score recorded |
+| p4b-review-planning | `p4b-review-planning/agent-review.md` (plan-canonical Phase 4B filename) | **Complete** (2026-04-04 refresh) — 4B score recorded; former `planning-review.md` merged to this path 2026-04-05 |
+| p5-objective-review | `p5-objective-review/objective-review.md` | **Complete** (2026-04-04 refresh) |
+| p6-final-report | Canonical bundle `.cursor/state/research-bundles/model-config-byok-canvas-2026-04-04.md` — **`## Final report`** (Phase 6) | **Complete** (2026-04-04 refresh) |
+| p6-final-report (FINAL) | `.cursor/state/research-bundles/model-config-byok-canvas-FINAL-2026-04-04.md` | **Complete** (2026-04-04 refresh) — signed-off return artifact |
 
 ---
 
 ## Open questions
 
 1. **Codegen DO (resolved 2026-04-04):** `worker/agents/core/codingAgent.ts` (`CodeGeneratorAgent`). Re-check if renamed; plan wording may lag.
-2. **State file:** Ensure `.cursor/state/model-config-byok-agui-canvas-orchestration.state.md` lists one canonical research path once the coordinator starts execution.
+2. **State file / return path:** Keep canonical bundle path and **FINAL** path in `.cursor/state/model-config-byok-agui-canvas-orchestration.state.md`; readers hand off from canonical **Bundle section map** (Phase 1 merge + downstream anchors) to **`model-config-byok-canvas-FINAL-2026-04-04.md`** for the exhaustive refresh close-out.
 3. **Superseded bundles:** If the canonical bundle filename changes, record the old path as **superseded** in state (per orchestration issues index rule).
 4. **Phase 1C (resolved 2026-04-04):** `p1c-research-byok-tenancy-ssrf` on disk; canonical bundle **§B** / **§C** / **§I.5** refreshed. Re-open only if security review demands deeper Portkey/vendor advisories or new code paths.
 
@@ -47,9 +50,11 @@ Running log for **decisions**, **artifact paths**, **open questions**, and **bun
 
 ## Research bundle merge index (canonical file section map)
 
-**Canonical bundle:** `.cursor/state/research-bundles/model-config-byok-canvas-2026-04-04.md`
+**Canonical bundle:** `.cursor/state/research-bundles/model-config-byok-canvas-2026-04-04.md` — **Bundle section map** at top reflects **Phase 1 merge** (1A–1D → **§I** and cross-refs **A–F**) plus later rows for **Planning** (p2), feasibility (p3), coordinator review, recommendations, intent trace, and **Final report** body in-file.
 
-The bundle opens with a **Bundle section map** table; below mirrors journal → bundle anchors for Phase 1 handoff.
+**FINAL pointer:** Phase 6 signed-off markdown lives at `.cursor/state/research-bundles/model-config-byok-canvas-FINAL-2026-04-04.md` (return path). Canonical file may duplicate or point to **FINAL** per bundle **`## Pointer to FINAL`**; this spine treats **FINAL** as the authoritative handoff file for the 2026-04-04 exhaustive refresh.
+
+The bundle opens with a **Bundle section map** table; below mirrors journal → bundle anchors (Phase 1 merge through Planning / p2–p3).
 
 | Bundle anchor | Topic | Journal / source |
 |---------------|--------|------------------|
@@ -68,13 +73,17 @@ The bundle opens with a **Bundle section map** table; below mirrors journal → 
 | **Coordinator review** | DoD table | Phase 1 merge gate **Yes** (post–p1c merge) |
 | **Recommendations** | Next steps | coordinator |
 | **Intent trace** | DoD matrix | coordinator + merge gate row (1A–1D complete) |
+| **Final report** (in canonical) | Phase 6 narrative in bundle | journal p6 + coordinator; see **FINAL** row below |
+| **FINAL** (signed-off) | Exhaustive refresh close-out | `.cursor/state/research-bundles/model-config-byok-canvas-FINAL-2026-04-04.md` |
 
-*Before Phase 6 final report: keep this index aligned if bundle sections are renamed; mark superseded bundle filenames in `.cursor/state/model-config-byok-agui-canvas-orchestration.state.md` per issues index.*
+*Keep this index aligned if bundle sections are renamed; mark superseded bundle filenames in `.cursor/state/model-config-byok-agui-canvas-orchestration.state.md` per issues index. After FINAL is written, prefer **FINAL** path as the external return path; canonical bundle remains the merged working artifact.*
 
 ---
 
 ## Changelog
 
+- **2026-04-05 (resume verification):** Workflow success checks 1–5 re-validated on disk (state canonical path, p1–p3 journal outputs, Phase 4 thresholds, **FINAL** + planning subsection, path:line/hypothesis discipline); Phase 4B deliverable renamed to plan-canonical **`p4b-review-planning/agent-review.md`** (content from former `planning-review.md`); references updated in spine, `p5-objective-review/objective-review.md`, state, and **FINAL** review table.
+- **2026-04-04 (exhaustive refresh):** Phase 1 parallel tracks re-run/refreshed and merged into canonical bundle; **p2**/**p3** updated to **seven** architecture paths; **spike-backlog** expanded to **26** spikes; **p4a** research review (4A score) and **p4b** planning review (`p4b-review-planning/planning-review.md`, 4B score) marked complete; **p5** objective review and **p6** final report + **FINAL** deliverable `model-config-byok-canvas-FINAL-2026-04-04.md`; spine artifacts index cleared of p4/p5/p6 **Pending**; merge index aligned with Phase 1 **Bundle section map** + **FINAL** return path.
 - **2026-04-04 (planning revision):** Product discussion **revised strategic framing** for orchestration and canvas planning: **non-goals** language in **p1d** and **p2** was softened to **scope boundaries / working assumptions** and **hypothesis evaluation** (LangGraph, fuller CopilotKit stack, Path 6). Updated files: `p1d-open-canvas-agui-a2ui/p1d-synthesis.md`, `p2-architect-paths/outputs/architecture-paths.md`, `p2-architect-paths/outputs/path-comparison-table.md`. **Gap analysis** consolidating deltas vs prior assumptions: **`p6-planning-revision-gap-analysis-2026-04-04.md`** (journal root).
 - **2026-04-04:** Phase 6 — **`## Final report`** appended to canonical research bundle (`model-config-byok-canvas-2026-04-04.md`): executive summary, research + citation table (AMA style per `citation-tracking.md`), **p2**/**p3** planning summary and feasibility matrix, linked spike backlog, non-decisions, engineering handoff; bundle section map row **Final report** added.
 - **2026-04-04:** Phase 3 — `p3-feasibility-crosscheck/outputs/feasibility-crosscheck.md` (Paths 1–6 verdicts + Worker/D1/DO + 503/config-modal tensions + DoD self-review) and `spike-backlog.md` (18 ordered spikes for Phase 6).

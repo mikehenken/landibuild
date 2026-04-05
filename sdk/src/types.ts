@@ -144,7 +144,7 @@ export type AgentWsClientMessage =
 	| { type: 'deploy' }
 	| { type: 'get_conversation_state' }
 	| { type: 'clear_conversation' }
-	| { type: 'user_suggestion'; message: string; images?: ImageAttachment[] };
+	| { type: 'user_suggestion'; message: string; images?: ImageAttachment[]; intent?: 'ask' | 'implement' };
 
 export type AgentWebSocketMessage = AgentWsServerMessage | AgentWsClientMessage;
 

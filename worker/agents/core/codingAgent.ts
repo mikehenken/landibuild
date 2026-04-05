@@ -22,6 +22,7 @@ import { WebSocketMessageData, WebSocketMessageType } from "worker/api/websocket
 import { PreviewType, TemplateDetails } from "worker/services/sandbox/sandboxTypes";
 import { WebSocketMessageResponses } from "../constants";
 import { AppService, ModelConfigService } from "worker/database";
+import { ModelCatalogRevisionService } from "../../services/model-catalog/ModelCatalogRevisionService";
 import { ConversationMessage, ConversationState } from "../inferutils/common";
 import { ImageAttachment } from "worker/types/image-attachment";
 import { RateLimitExceededError } from "shared/types/errors";
@@ -48,6 +49,9 @@ export class CodeGeneratorAgent extends Agent<Env, AgentState> implements AgentI
     
     /** Ticket manager for WebSocket authentication */
     private ticketManager = new WsTicketManager();
+
+    /** Tracks D1 model catalog revision applied to this session (user model config reload). */
+    private lastSeenModelCatalogRevision: number | null = null;
     
     // Services
     readonly fileManager: FileManager;
@@ -207,7 +211,31 @@ export class CodeGeneratorAgent extends Agent<Env, AgentState> implements AgentI
         const userConfigsRecord = await modelConfigService.getUserModelConfigs(this.state.metadata.userId);
         this.behavior.setUserModelConfigs(userConfigsRecord);
         this.logger().info(`Agent ${this.getAgentId()} session: ${this.state.sessionId} onStart: User configs loaded successfully`, {userConfigsRecord});
+
+        const revSvc = new ModelCatalogRevisionService(this.env);
+        this.lastSeenModelCatalogRevision = await revSvc.getRevision();
     }
+
+	private async refreshUserModelConfigsIfCatalogRevisionChanged(): Promise<void> {
+		try {
+			const revSvc = new ModelCatalogRevisionService(this.env);
+			const rev = await revSvc.getRevision();
+			if (this.lastSeenModelCatalogRevision === null) {
+				this.lastSeenModelCatalogRevision = rev;
+				return;
+			}
+			if (rev === this.lastSeenModelCatalogRevision) {
+				return;
+			}
+			this.lastSeenModelCatalogRevision = rev;
+			const modelConfigService = new ModelConfigService(this.env);
+			const userConfigsRecord = await modelConfigService.getUserModelConfigs(this.state.metadata.userId);
+			this.behavior.setUserModelConfigs(userConfigsRecord);
+			this.logger().info('Reloaded user model configs after catalog revision change', { revision: rev });
+		} catch (err) {
+			this.logger().warn('Skipped model config refresh after revision check', { err });
+		}
+	}
     
     onConnect(connection: Connection, ctx: ConnectionContext) {
         this.logger().info(`Agent connected for agent ${this.getAgentId()}`, { connection, ctx });
@@ -224,7 +252,20 @@ export class CodeGeneratorAgent extends Agent<Env, AgentState> implements AgentI
             templateDetails: this.behavior.getTemplateDetails(),
             previewUrl: previewUrl
         });
+        void this.emitModelCatalogRevision(connection);
     }
+
+	private emitModelCatalogRevision(connection: Connection): Promise<void> {
+		return (async () => {
+			try {
+				const svc = new ModelCatalogRevisionService(this.env);
+				const revision = await svc.getRevision();
+				sendToConnection(connection, WebSocketMessageResponses.MODEL_CATALOG_REVISION, { revision });
+			} catch (err) {
+				this.logger().warn('Skipped model catalog revision push', { err });
+			}
+		})();
+	}
 
     private initLogger(agentId: string, userId: string, sessionId?: string) {
         this._logger = createObjectLogger(this, 'CodeGeneratorAgent');
@@ -505,18 +546,27 @@ export class CodeGeneratorAgent extends Agent<Env, AgentState> implements AgentI
      * Handle user input during conversational code generation
      * Processes user messages and updates pendingUserInputs state
      */
-    async handleUserInput(userMessage: string, images?: ImageAttachment[]): Promise<void> {
+    async handleUserInput(
+        userMessage: string,
+        images?: ImageAttachment[],
+        options?: { intent?: 'ask' | 'implement' },
+    ): Promise<void> {
         try {
+            await this.refreshUserModelConfigsIfCatalogRevisionChanged();
+            const intent = options?.intent ?? 'implement';
             this.logger().info('Processing user input message', { 
                 messageLength: userMessage.length,
                 pendingInputsCount: this.state.pendingUserInputs.length,
                 hasImages: !!images && images.length > 0,
-                imageCount: images?.length || 0
+                imageCount: images?.length || 0,
+                intent,
             });
 
             await this.behavior.handleUserInput(userMessage, images);
+            if (intent === 'ask') {
+                return;
+            }
             if (!this.behavior.isCodeGenerating()) {
-                // If idle, start generation process
                 this.logger().info('User input during IDLE state, starting generation');
                 this.behavior.generateAllFiles().catch(error => {
                     this.logger().error('Error starting generation from user input:', error);

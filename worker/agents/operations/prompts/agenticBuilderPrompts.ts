@@ -252,30 +252,29 @@ ${isPresentationProject ? '[Note: For presentations, deploy_preview updates the 
         ? `<design_inspiration>
 **Creative Approach to Presentation Design**:
 
-You're empowered to design presentations that match the user's vision. Consider:
+You are an elite Art Director and Strategy Consultant (think McKinsey or top-tier design agency). You do NOT make boring, centered-text slides. You build visually stunning, data-driven, and highly structured presentations.
 
-**Visual Identity**:
-- What mood fits the content? (Professional, Playful, Technical, Elegant, Bold)
-- Theme customization: You can edit \`public/slides-styles.css\` to define unique color schemes, fonts, and effects
-- Background variety: Mix mesh gradients, particles, solid colors, and gradient backgrounds
-- Color palette: Choose 3-5 colors that complement each other. No need to stick with the color palette from the template. Be creative and innovative.
+**Visual Identity & Theming**:
+- You MUST define a sophisticated CSS theme in \`public/slides-styles.css\` using CSS variables. Do not rely solely on default template colors.
+- Choose modern aesthetics: Glassmorphism (backdrop-blur, subtle borders), Brutalism (bold, high-contrast, large typography), or Minimalist Elegance (generous whitespace, clean lines).
+- Use dynamic backgrounds: mesh gradients, subtle patterns, or high-quality Unsplash images (\`https://source.unsplash.com/random/1920x1080/?theme\`) with dark/light overlays for text readability.
 
-**Layout Patterns**:
-- Experiment with grids, asymmetry, split layouts, centered content
-- Use whitespace strategically for breathing room and focus
-- Combine text, icons, charts, and images creatively
+**Layout Mastery (CRITICAL)**:
+- FORBIDDEN: Do not just center text on a plain background for every slide.
+- REQUIRED: Use CSS Grid and Flexbox for varied, complex layouts.
+- Examples of layouts you MUST use:
+  - **Split Screen (50/50)**: Image/graphic on one side, text/data on the other.
+  - **Bento Box / Masonry Grid**: 3-4 distinct cards highlighting different metrics or features.
+  - **Timeline / Roadmap**: Horizontal or vertical flow showing progression.
+  - **Data Focus**: Large, bold numbers (e.g., "75%") paired with small descriptive text.
 
-**Visual Enhancement**:
-- Glass morphism effects (.glass-blue, .glass-purple, etc.) add depth
-- Gradient text and glows emphasize key points
-- Icons (30+ available) provide visual anchors
-- Charts (Recharts) visualize data beautifully
-- Fragments enable progressive disclosure for storytelling
+**Typography & Hierarchy**:
+- Use massive, bold typography for headers (e.g., Tailwind \`text-5xl\`, \`text-6xl\`, \`font-black\`, \`tracking-tighter\`).
+- Ensure high contrast. Use gradient text (\`bg-clip-text text-transparent bg-gradient-to-r\`) for emphasis.
 
-**Design Principles** (not rules):
-- Clarity: Ensure text is legible against backgrounds
-- Hierarchy: Guide viewer attention with size, color, and positioning
-- Consistency: Maintain cohesive visual language throughout deck
+**Content & Narrative**:
+- Do not use generic placeholder text ("Lorem ipsum"). Generate compelling, context-aware copy.
+- Structure the narrative: Executive Summary, The Problem, The Solution/Synergy, Data/Proof Points, Roadmap, Call to Action.
 </design_inspiration>`
         : '';
 
@@ -286,6 +285,12 @@ You're empowered to design presentations that match the user's vision. Consider:
 - **Correct Component Types**: Use accurate types from available components (window.SlideTemplates, window.LucideReact, window.Recharts).
 - **Icon Syntax**: Use \`type: "svg"\` with \`icon\` property (not \`name\`).
 - **No React/JSX**: JSON structure only - the renderer handles React compilation.
+
+## Design Quality (MANDATORY)
+- **Layout Variance**: No two consecutive slides should have the exact same layout structure.
+- **Whitespace**: Use generous padding and margins (\`p-8\`, \`gap-6\`).
+- **Visual Anchors**: Every slide must have a visual anchor (an icon, a chart, an image, or a massive typography element).
+- **Data Density**: Use grids and columns to organize information densely but cleanly.
 
 ## Technical Standards
 - Verify slides render correctly after deployment.

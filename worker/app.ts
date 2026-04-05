@@ -5,6 +5,7 @@ import { getCORSConfig, getSecureHeadersConfig } from './config/security';
 import { RateLimitService } from './services/rate-limit/rateLimits';
 import { AppEnv } from './types/appenv';
 import { setupRoutes } from './api/routes';
+import { errorResponse } from './api/responses';
 import { CsrfService } from './services/csrf/CsrfService';
 import { SecurityError, SecurityErrorType } from 'shared/types/errors';
 import { getGlobalConfigurableSettings } from './config';
@@ -89,8 +90,12 @@ export function createApp(env: Env): Hono<AppEnv> {
     // Now setup all the routes
     setupRoutes(app);
 
-    // Add not found route to redirect to ASSETS
+    // Unmatched /api/* must return JSON — ASSETS SPA fallback would serve index.html and break clients.
     app.notFound((c) => {
+        const pathname = new URL(c.req.url).pathname;
+        if (pathname.startsWith('/api/')) {
+            return errorResponse('Not found', 404);
+        }
         return c.env.ASSETS.fetch(c.req.raw);
     });
     return app;

@@ -9,10 +9,10 @@
 From the **repository root** (`landibuild`):
 
 ```powershell
-pwsh -File scripts/sync-orchestration-bundle.ps1
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/sync-orchestration-bundle.ps1
 ```
 
-Requires **PowerShell 7.2+** (`#requires -Version 7.2`).
+Requires **Windows PowerShell 5.1+** or **PowerShell 7+** (`#requires -Version 5.1`). If `pwsh` is installed, `pwsh -File scripts/sync-orchestration-bundle.ps1` also works.
 
 ## Paths
 

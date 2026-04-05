@@ -165,7 +165,12 @@ export function handleWebSocketMessage(
                     }
                 }
                 
-                agent.handleUserInput(parsedMessage.message, parsedMessage.images).catch((error: unknown) => {
+                const rawIntent = parsedMessage.intent;
+                const intent: 'ask' | 'implement' =
+                    rawIntent === 'ask' ? 'ask' : 'implement';
+                agent
+                    .handleUserInput(parsedMessage.message, parsedMessage.images, { intent })
+                    .catch((error: unknown) => {
                     logger.error('Error handling user suggestion:', error);
                     sendError(connection, `Error processing user suggestion: ${error instanceof Error ? error.message : String(error)}`);
                 });
