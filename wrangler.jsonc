@@ -172,12 +172,12 @@
             "version": "1.0.0"
         },
         "CUSTOM_DOMAIN": "vibe.landi.build",
-        "MAX_SANDBOX_INSTANCES": "10",
+        "MAX_SANDBOX_INSTANCES": "12",
         "SANDBOX_INSTANCE_TYPE": "standard-3",
-        "USE_SUPABASE_AUTH": "",
+        "USE_SUPABASE_AUTH": "true",
         "SUPABASE_URL": "",
-        "SUPABASE_OAUTH_GOOGLE": "false",
-        "SUPABASE_OAUTH_GITHUB": "true"
+        "SUPABASE_OAUTH_GOOGLE": "true",
+        "SUPABASE_OAUTH_GITHUB": "false"
     },
 	"workers_dev": true,
 	"preview_urls": true
