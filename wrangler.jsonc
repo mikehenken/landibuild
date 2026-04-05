@@ -178,7 +178,7 @@
         "MAX_SANDBOX_INSTANCES": "12",
         "SANDBOX_INSTANCE_TYPE": "standard-3",
         "USE_SUPABASE_AUTH": "true",
-        "SUPABASE_URL": "",
+        "SUPABASE_URL": "https://mnrqappedgerlgnnfbyn.supabase.co",
         "SUPABASE_OAUTH_GOOGLE": "true",
         "SUPABASE_OAUTH_GITHUB": "true",
         "ENABLE_CUSTOM_MODEL_PROVIDER_CRUD": "true",

@@ -194,6 +194,14 @@ class CloudflareDeploymentManager {
 		console.log(`   AI Gateway: ${aiGateway || 'Not configured'}`);
 		console.log(`   Dispatch Namespace: ${dispatchNamespace || 'Not configured'}`);
 
+		const supabaseOn =
+			this.config.vars?.USE_SUPABASE_AUTH === 'true' ||
+			this.config.vars?.USE_SUPABASE_AUTH === '1';
+		const supabaseUrl = this.config.vars?.SUPABASE_URL?.trim() || '';
+		console.log(
+			`   Supabase auth (Worker): ${supabaseOn ? 'requested' : 'off'} | URL: ${supabaseUrl ? 'set' : 'missing'}`,
+		);
+
 		// Validate critical configuration
 		if (!databaseName) {
 			console.warn(
@@ -204,6 +212,12 @@ class CloudflareDeploymentManager {
 		if (!customDomain) {
 			console.warn(
 				'⚠️  No custom domain configured - using default routes',
+			);
+		}
+
+		if (supabaseOn && !supabaseUrl) {
+			console.warn(
+				'⚠️  USE_SUPABASE_AUTH is true but SUPABASE_URL is empty — Worker will not enable Supabase (set vars.SUPABASE_URL in wrangler.jsonc).',
 			);
 		}
 
@@ -1551,16 +1565,76 @@ class CloudflareDeploymentManager {
 	}
 
 	/**
+	 * When Supabase auth is on in wrangler vars, ensure the Vite client build sees the same
+	 * project URL and flag even if the shell only has Worker-oriented env (e.g. CI).
+	 * Anon key must still come from VITE_SUPABASE_ANON_KEY or .env.local / .env.production.
+	 */
+	private getSupabaseViteEnvForBuild(): Record<string, string> {
+		const vars = this.config.vars;
+		if (!vars) {
+			return {};
+		}
+		const useSupabase =
+			vars.USE_SUPABASE_AUTH === 'true' || vars.USE_SUPABASE_AUTH === '1';
+		if (!useSupabase) {
+			return {};
+		}
+
+		const out: Record<string, string> = {};
+		const wranglerUrl = (vars.SUPABASE_URL || '').trim();
+		if (wranglerUrl && !process.env.VITE_SUPABASE_URL?.trim()) {
+			out.VITE_SUPABASE_URL = wranglerUrl;
+		}
+		if (!process.env.VITE_USE_SUPABASE_AUTH?.trim()) {
+			out.VITE_USE_SUPABASE_AUTH = 'true';
+		}
+		return out;
+	}
+
+	private warnSupabaseClientBuild(): void {
+		const vars = this.config.vars;
+		if (!vars) {
+			return;
+		}
+		const useSupabase =
+			vars.USE_SUPABASE_AUTH === 'true' || vars.USE_SUPABASE_AUTH === '1';
+		if (!useSupabase) {
+			return;
+		}
+		if (!process.env.VITE_SUPABASE_ANON_KEY?.trim()) {
+			console.warn(
+				'⚠️  VITE_SUPABASE_ANON_KEY is not set in the environment. Ensure .env.production, .env.local, or the shell exports it so the client bundle includes Supabase.',
+			);
+		}
+		if (!process.env.SUPABASE_JWT_SECRET?.trim()) {
+			console.warn(
+				'⚠️  SUPABASE_JWT_SECRET is not in the environment for this deploy. If the Worker secret is not already set in Cloudflare, add it: npx wrangler secret put SUPABASE_JWT_SECRET',
+			);
+		}
+	}
+
+	/**
 	 * Builds the project (clean dist and run build)
 	 */
 	private async buildProject(): Promise<void> {
 		console.log('🔨 Building project...');
 
 		try {
-			// Run build
+			this.warnSupabaseClientBuild();
+			const viteSupabase = this.getSupabaseViteEnvForBuild();
+			if (Object.keys(viteSupabase).length > 0) {
+				console.log(
+					'ℹ️  Injecting Supabase Vite env for production build:',
+					Object.keys(viteSupabase).join(', '),
+				);
+			}
 			execSync('bun run build', {
 				stdio: 'inherit',
 				cwd: PROJECT_ROOT,
+				env: {
+					...process.env,
+					...viteSupabase,
+				},
 			});
 
 			console.log('✅ Project build completed');
@@ -1746,6 +1820,7 @@ class CloudflareDeploymentManager {
 			'ENVIRONMENT',
 			'PLATFORM_MODEL_PROVIDERS',
 			'USE_CLOUDFLARE_IMAGES',
+			'SUPABASE_JWT_SECRET',
 		];
 
 		const prodVarsContent: string[] = [

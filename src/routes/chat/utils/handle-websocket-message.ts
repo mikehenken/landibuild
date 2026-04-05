@@ -125,6 +125,13 @@ export function createWebSocketMessageHandler(deps: HandleMessageDeps) {
     // Blueprint chunk parser (maintained across chunks)
     let blueprintParser: ReturnType<typeof createRepairingJSONParser> | null = null;
 
+    /**
+     * Dedupes automatic `preview` WebSocket requests. `generation_complete` marks the code stage
+     * completed before some `cf_agent_state` snapshots; the latter only used to look for `active`,
+     * so preview was never requested. We may trigger from either path — this flag avoids double deploy.
+     */
+    let autoPreviewDeployRequested = false;
+
     return (websocket: WebSocket, message: WebSocketMessage) => {
         const {
             setFiles,
@@ -387,12 +394,17 @@ export function createWebSocketMessageHandler(deps: HandleMessageDeps) {
                     updateStage('code', { status: 'active' });
                 } else if (!state.shouldBeGenerating) {
                     const codeStage = projectStages.find((stage) => stage.id === 'code');
-                    if (codeStage?.status === 'active' && !isGenerating) {
+                    const codeEligible =
+                        codeStage?.status === 'active' || codeStage?.status === 'completed';
+                    if (codeEligible && !isGenerating) {
                         if (state.generatedFilesMap && Object.keys(state.generatedFilesMap).length > 0) {
-                            updateStage('code', { status: 'completed' });
+                            if (codeStage?.status === 'active') {
+                                updateStage('code', { status: 'completed' });
+                            }
 
-                            if (!previewUrl) {
+                            if (!previewUrl && !autoPreviewDeployRequested) {
                                 logger.debug('🚀 Generated files exist but no preview URL - auto-deploying preview');
+                                autoPreviewDeployRequested = true;
                                 sendWebSocketMessage(websocket, 'preview');
                             }
                         }
@@ -594,6 +606,7 @@ export function createWebSocketMessageHandler(deps: HandleMessageDeps) {
             }
 
             case 'generation_started': {
+                autoPreviewDeployRequested = false;
                 updateStage('code', { status: 'active' });
                 setTotalFiles(message.totalFiles);
                 setIsGenerating(true);
@@ -611,6 +624,12 @@ export function createWebSocketMessageHandler(deps: HandleMessageDeps) {
                 setIsPhaseProgressActive(false);
                 setIsThinking(false);
                 setIsGenerating(false);
+
+                if (!previewUrl && !autoPreviewDeployRequested) {
+                    logger.debug('🚀 Generation complete with no preview URL — requesting preview deployment');
+                    autoPreviewDeployRequested = true;
+                    sendWebSocketMessage(websocket, 'preview');
+                }
                 break;
             }
 
