@@ -169,6 +169,7 @@ You can route Google/GitHub login through **Supabase Auth** instead of direct Wo
 - `SUPABASE_URL` — same project URL as the client.
 - `SUPABASE_JWT_SECRET` — JWT secret from Supabase (Settings → API). Store with `npx wrangler secret put SUPABASE_JWT_SECRET` for remote; put the value in `.dev.vars` for local `wrangler dev` only.
 - Optional: `SUPABASE_OAUTH_GOOGLE` / `SUPABASE_OAUTH_GITHUB` — set to `false` or `0` to hide a provider when Supabase mode is on (defaults to enabled).
+- **`SUPABASE_ANON_KEY`** (in `wrangler.jsonc` `vars`) — same value as the Supabase **anon** key. It is a public client key; storing it in `vars` lets **`vite.config.ts`** inline `VITE_SUPABASE_*` when Cloudflare CI runs `vite build` without `.env.local`. Override anytime with build env vars `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `VITE_USE_SUPABASE_AUTH`.
 
 **CSP:** The app meta CSP already allows `connect-src` to `https:`; no change is required for typical Supabase hosts unless you tighten CSP later.
 

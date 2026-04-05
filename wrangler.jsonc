@@ -179,6 +179,7 @@
         "SANDBOX_INSTANCE_TYPE": "standard-3",
         "USE_SUPABASE_AUTH": "true",
         "SUPABASE_URL": "https://mnrqappedgerlgnnfbyn.supabase.co",
+        "SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1ucnFhcHBlZGdlcmxnbm5mYnluIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYyMTI4MTUsImV4cCI6MjA4MTc4ODgxNX0.Og3N1SNV4OOgGzE0Ki6hbs4E_D1eqOBfYHWeaNb1R5U",
         "SUPABASE_OAUTH_GOOGLE": "true",
         "SUPABASE_OAUTH_GITHUB": "true",
         "ENABLE_CUSTOM_MODEL_PROVIDER_CRUD": "true",
