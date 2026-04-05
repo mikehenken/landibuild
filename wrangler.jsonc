@@ -162,6 +162,9 @@
                 "app": {
                     "enabled": true
                 },
+                "websites": {
+                    "enabled": true
+                },
                 "presentation": {
                     "enabled": true
                 },
@@ -177,7 +180,9 @@
         "USE_SUPABASE_AUTH": "true",
         "SUPABASE_URL": "",
         "SUPABASE_OAUTH_GOOGLE": "true",
-        "SUPABASE_OAUTH_GITHUB": "false"
+        "SUPABASE_OAUTH_GITHUB": "true",
+        "ENABLE_CUSTOM_MODEL_PROVIDER_CRUD": "true",
+        "PLATFORM_ADMIN_USER_IDS": "4aaeb9fa-180e-4c3e-a744-a9207d6efd32,e177d707-7b5a-4bc9-ab00-2c2ebbe671b9,9f5781bc-9e5a-43f4-8ac1-2c5647dd424a,617177b1-ddc3-45f0-854c-a943d5a887fe"
     },
 	"workers_dev": true,
 	"preview_urls": true
