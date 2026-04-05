@@ -136,7 +136,7 @@ export function handleWebSocketMessage(
                     error: 'Please use the GitHub export button which will redirect you to authorize with GitHub OAuth'
                 });
                 break;
-            case WebSocketMessageRequests.USER_SUGGESTION:
+            case WebSocketMessageRequests.USER_SUGGESTION: {
                 // Handle user suggestion for conversational AI
                 logger.info('Received user suggestion', {
                     messageLength: parsedMessage.message?.length || 0,
@@ -175,6 +175,7 @@ export function handleWebSocketMessage(
                     sendError(connection, `Error processing user suggestion: ${error instanceof Error ? error.message : String(error)}`);
                 });
                 break;
+            }
             case WebSocketMessageRequests.GET_MODEL_CONFIGS:
                 logger.info('Fetching model configurations');
                 agent.getBehavior().getModelConfigsInfo().then(configsInfo => {

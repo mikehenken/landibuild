@@ -14,7 +14,8 @@ import { SecurityError, SecurityErrorType } from 'shared/types/errors';
 import { ApiResponse, ControllerResponse } from '../types';
 import { RouteContext } from '../../types/route-context';
 import { AppService, ModelConfigService } from '../../../database';
-import { ModelConfig, credentialsToRuntimeOverrides } from '../../../agents/inferutils/config.types';
+import { AGENT_CONFIG } from '../../../agents/inferutils/config';
+import { AIModels, ModelConfig, credentialsToRuntimeOverrides } from '../../../agents/inferutils/config.types';
 import { RateLimitService } from '../../../services/rate-limit/rateLimits';
 import { validateWebSocketOrigin } from '../../../middleware/security/websocket';
 import { createLogger } from '../../../logger';
@@ -41,6 +42,25 @@ const resolveBehaviorType = (body: CodeGenArgs): BehaviorType => {
 const resolveProjectType = (body: CodeGenArgs): ProjectType | 'auto' => {
     return body.projectType || 'auto';
 };
+
+/** Landing / Websites flow: same blueprint + template-selection prompts, OpenRouter Flash Lite Preview. */
+function applyLandingPagesOpenRouterRouting(
+    configs: Record<string, ModelConfig>,
+): Record<string, ModelConfig> {
+    const model = AIModels.OPENROUTER_GOOGLE_GEMINI_3_FLASH_LITE_PREVIEW;
+    const next: Record<string, ModelConfig> = { ...configs };
+    next.blueprint = {
+        ...AGENT_CONFIG.blueprint,
+        ...next.blueprint,
+        name: model,
+    };
+    next.templateSelection = {
+        ...AGENT_CONFIG.templateSelection,
+        ...next.templateSelection,
+        name: model,
+    };
+    return next;
+}
 
 
 /**
@@ -114,12 +134,16 @@ export class CodingAgentController extends BaseController {
             const userConfigsRecord = await modelConfigService.getUserModelConfigs(user.id);
                                 
             // Extract only user-overridden configs, stripping metadata fields
-            const userModelConfigs: Record<string, ModelConfig> = {};
+            let userModelConfigs: Record<string, ModelConfig> = {};
             for (const [actionKey, mergedConfig] of Object.entries(userConfigsRecord)) {
                 if (mergedConfig.isUserOverride) {
                     const { isUserOverride, userConfigId, ...modelConfig } = mergedConfig;
                     userModelConfigs[actionKey] = modelConfig;
                 }
+            }
+
+            if (body.buildFocus === 'landing-pages') {
+                userModelConfigs = applyLandingPagesOpenRouterRouting(userModelConfigs);
             }
 
             const runtimeOverrides = credentialsToRuntimeOverrides(body.credentials);

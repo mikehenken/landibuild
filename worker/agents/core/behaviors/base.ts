@@ -29,6 +29,7 @@ import { RateLimitExceededError } from 'shared/types/errors';
 import { ImageAttachment, type ProcessedImageAttachment } from '../../../types/image-attachment';
 import { OperationOptions } from '../../operations/common';
 import { ImageType, uploadImage, detectBlankScreenshot } from 'worker/utils/images';
+import { emitAgentUiEvent } from '../agentUiWire';
 import { ScreenshotSecurity } from 'worker/utils/screenshot-security';
 import { DeepDebugResult } from '../types';
 import { updatePackageJson } from '../../utils/packageSyncer';
@@ -1680,7 +1681,7 @@ export abstract class BaseCodingBehavior<TState extends BaseProjectState>
                         message: string,
                         conversationId: string,
                         isStreaming: boolean,
-                        tool?: { name: string; status: 'start' | 'success' | 'error'; args?: Record<string, unknown> }
+                        tool?: { name: string; status: 'start' | 'success' | 'error'; args?: Record<string, unknown>; result?: string }
                     ) => {
                         // Track conversationId when deep_debug starts
                         if (tool?.name === 'deep_debug' && tool.status === 'start') {
@@ -1693,6 +1694,17 @@ export abstract class BaseCodingBehavior<TState extends BaseProjectState>
                             isStreaming,
                             tool,
                         });
+                        
+                        // Mirror text stream and tool events to AG-UI
+                        if (tool) {
+                            if (tool.status === 'start') {
+                                emitAgentUiEvent(this, 'TOOL_CALL_START', { toolName: tool.name, args: tool.args }, conversationId);
+                            } else if (tool.status === 'success' || tool.status === 'error') {
+                                emitAgentUiEvent(this, 'TOOL_CALL_END', { toolName: tool.name, status: tool.status, result: tool.result }, conversationId);
+                            }
+                        } else if (isStreaming) {
+                            emitAgentUiEvent(this, 'TEXT_MESSAGE_CONTENT', { text: message }, conversationId);
+                        }
                     },
                     errors,
                     projectUpdates,

@@ -68,7 +68,7 @@ export default defineConfig({
 					shared: path.resolve(__dirname, './shared'),
 					worker: path.resolve(__dirname, './worker'),
 				},
-			},
+			} as import('vite').ResolveOptions,
 		},
 	},
 

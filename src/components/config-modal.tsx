@@ -22,7 +22,9 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Link } from 'react-router';
 import { apiClient } from '@/lib/api-client';
+import { SHOW_API_KEYS_AND_BYOK_UI } from '@/constants/product-ui-flags';
 import { ByokApiKeysModal } from './byok-api-keys-modal';
 import type {
   ModelConfig,
@@ -265,6 +267,9 @@ export function ConfigModal({
   };
 
   const openByokModal = () => {
+    if (!SHOW_API_KEYS_AND_BYOK_UI) {
+      return;
+    }
     setByokModalOpen(true);
   };
 
@@ -306,6 +311,31 @@ export function ConfigModal({
               </AlertDescription>
             </Alert>
           )}
+          {(agentConfig.key === 'blueprint' ||
+            agentConfig.key === 'projectSetup' ||
+            agentConfig.key === 'templateSelection') && (
+            <Alert>
+              <Info className="h-4 w-4" />
+              <AlertDescription className="text-sm space-y-2">
+                <p>
+                  <span className="font-medium">Project templates:</span> starter templates are loaded from the
+                  platform sandbox catalog for this deployment. There is no per-user filesystem or Git path field
+                  here.
+                </p>
+                <p>
+                  To influence which template is chosen for new sessions, configure the{' '}
+                  <span className="font-medium">Template selection</span> model under{' '}
+                  <Link
+                    to="/settings#model-configs"
+                    className="text-accent underline-offset-4 hover:underline"
+                  >
+                    Settings
+                  </Link>
+                  {' '}→ AI configuration (Quickstart).
+                </p>
+              </AlertDescription>
+            </Alert>
+          )}
         </div>
 
         <div className="space-y-6">
@@ -325,21 +355,21 @@ export function ConfigModal({
 
           {/* Model Selection Section */}
           <div className="space-y-4">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-2">
               <div>
                 <Label className="text-sm font-medium">Model Configuration</Label>
                 <p className="text-xs text-text-tertiary mt-1">
-                  Select primary and fallback models - we'll use your API keys if available
+                  {SHOW_API_KEYS_AND_BYOK_UI
+                    ? "Select primary and fallback models — we'll use your API keys when configured."
+                    : 'Select primary and fallback models from the available platform list.'}
                 </p>
               </div>
-              <Button variant="outline" size="sm" 
-              onClick={openByokModal}
-              disabled // DISABLED: BYOK Disabled for security reasons
-              className="gap-2">
-                <Key className="h-4 w-4" />
-                {/* Manage Keys */}
-                Coming Soon
-              </Button>
+              {SHOW_API_KEYS_AND_BYOK_UI ? (
+                <Button variant="outline" size="sm" onClick={openByokModal} className="gap-2 shrink-0">
+                  <Key className="h-4 w-4" />
+                  Manage keys
+                </Button>
+              ) : null}
             </div>
             
             {/* Two-Column Model Layout */}
@@ -357,7 +387,7 @@ export function ConfigModal({
                 />
                 
                 {/* Model Status Messages */}
-                {selectedModelInfo.requiresBYOK && (
+                {SHOW_API_KEYS_AND_BYOK_UI && selectedModelInfo.requiresBYOK && (
                   <div className="flex items-center gap-2 text-sm text-amber-600 bg-amber-50 dark:bg-amber-950/20 px-3 py-2 rounded-md border border-amber-200 dark:border-amber-800">
                     <Key className="h-4 w-4" />
                     <span>API key needed for {selectedModelInfo.provider}</span>
@@ -366,8 +396,17 @@ export function ConfigModal({
                     </Button>
                   </div>
                 )}
-                
-                {selectedModelInfo.isPlatformModel && formData.modelName && formData.modelName !== 'default' && (
+                {!SHOW_API_KEYS_AND_BYOK_UI && selectedModelInfo.requiresBYOK && (
+                  <div className="flex items-center gap-2 text-sm text-amber-600 bg-amber-50 dark:bg-amber-950/20 px-3 py-2 rounded-md border border-amber-200 dark:border-amber-800">
+                    <Key className="h-4 w-4" />
+                    <span>This model expects a provider API key for this deployment.</span>
+                  </div>
+                )}
+
+                {SHOW_API_KEYS_AND_BYOK_UI &&
+                  selectedModelInfo.isPlatformModel &&
+                  formData.modelName &&
+                  formData.modelName !== 'default' && (
                   <div className="flex items-center gap-2 text-sm text-blue-600 bg-blue-50 dark:bg-blue-950/20 px-3 py-2 rounded-md border border-blue-200 dark:border-blue-800">
                     <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -375,8 +414,11 @@ export function ConfigModal({
                     <span>Platform model with usage limits. Consider BYOK for higher usage.</span>
                   </div>
                 )}
-                
-                {formData.modelName && formData.modelName !== 'default' && selectedModelInfo.hasUserKey && (
+
+                {SHOW_API_KEYS_AND_BYOK_UI &&
+                  formData.modelName &&
+                  formData.modelName !== 'default' &&
+                  selectedModelInfo.hasUserKey && (
                   <div className="flex items-center gap-2 text-sm text-green-600 bg-green-50 dark:bg-green-950/20 px-3 py-2 rounded-md border border-green-200 dark:border-green-800">
                     <Check className="h-4 w-4" />
                     <span>Using your {selectedModelInfo.provider} API key</span>
@@ -404,40 +446,45 @@ export function ConfigModal({
           <Separator />
 
           {/* BYOK Information */}
-          <div className="space-y-3">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="p-4 rounded-lg border bg-blue-50/50 border-blue-200">
-                <div className="flex items-center gap-2 mb-2">
-                  <div className="h-2 w-2 rounded-full bg-blue-500"></div>
-                  <h4 className="font-medium text-sm text-blue-900">Platform Models</h4>
-                </div>
-                <p className="text-xs text-blue-700">
-                  Models served through our platform with limited quota. No API keys required.
-                </p>
-              </div>
-              
-              <div className="p-4 rounded-lg border bg-green-50/50 border-green-200">
-                <div className="flex items-center gap-2 mb-2">
-                  <div className="h-2 w-2 rounded-full bg-green-500"></div>
-                  <h4 className="font-medium text-sm text-green-900">BYOK (Your Keys)</h4>
-                </div>
-                <p className="text-xs text-green-700">
-                  Your API keys are used for direct billing with providers. Unlimited usage based on your provider account.
-                </p>
-              </div>
-            </div>
-            <Alert>
-              <Info className="h-4 w-4" />
-              <AlertDescription className="text-sm">
-                Custom OpenAI-compatible base URLs: saving named providers to your account may be unavailable until
-                vault-backed HTTP storage is enabled for this deployment. You can still use platform models, BYOK keys
-                for supported providers where enabled, and the provider &quot;Test connection&quot; flow with a base URL
-                and key when the API allows it.
-              </AlertDescription>
-            </Alert>
-          </div>
+          {SHOW_API_KEYS_AND_BYOK_UI ? (
+            <>
+              <div className="space-y-3">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="p-4 rounded-lg border bg-blue-50/50 border-blue-200">
+                    <div className="flex items-center gap-2 mb-2">
+                      <div className="h-2 w-2 rounded-full bg-blue-500"></div>
+                      <h4 className="font-medium text-sm text-blue-900">Platform Models</h4>
+                    </div>
+                    <p className="text-xs text-blue-700">
+                      Models served through our platform with limited quota. No API keys required.
+                    </p>
+                  </div>
 
-          <Separator />
+                  <div className="p-4 rounded-lg border bg-green-50/50 border-green-200">
+                    <div className="flex items-center gap-2 mb-2">
+                      <div className="h-2 w-2 rounded-full bg-green-500"></div>
+                      <h4 className="font-medium text-sm text-green-900">BYOK (Your Keys)</h4>
+                    </div>
+                    <p className="text-xs text-green-700">
+                      Your API keys are used for direct billing with providers. Unlimited usage based on your provider
+                      account.
+                    </p>
+                  </div>
+                </div>
+                <Alert>
+                  <Info className="h-4 w-4" />
+                  <AlertDescription className="text-sm">
+                    Custom OpenAI-compatible base URLs: saving named providers to your account may be unavailable until
+                    vault-backed HTTP storage is enabled for this deployment. You can still use platform models, BYOK
+                    keys for supported providers where enabled, and the provider &quot;Test connection&quot; flow with a
+                    base URL and key when the API allows it.
+                  </AlertDescription>
+                </Alert>
+              </div>
+
+              <Separator />
+            </>
+          ) : null}
 
           {/* Parameters */}
           <div className="space-y-4">
@@ -459,7 +506,7 @@ export function ConfigModal({
                 />
                 {defaultConfig?.temperature && (
                   <p className="text-xs text-text-tertiary">
-                    🔧 Default: {defaultConfig.temperature}
+                    Default: {defaultConfig.temperature}
                   </p>
                 )}
               </div>
@@ -480,7 +527,7 @@ export function ConfigModal({
                 </Select>
                 {defaultConfig?.reasoning_effort && (
                   <p className="text-xs text-text-tertiary">
-                    🔧 Default: {defaultConfig.reasoning_effort}
+                    Default: {defaultConfig.reasoning_effort}
                   </p>
                 )}
               </div>
@@ -537,12 +584,13 @@ export function ConfigModal({
         </DialogFooter>
       </DialogContent>
 
-      {/* BYOK API Keys Modal */}
-      <ByokApiKeysModal
-        isOpen={byokModalOpen}
-        onClose={() => setByokModalOpen(false)}
-        onKeyAdded={handleByokKeyAdded}
-      />
+      {SHOW_API_KEYS_AND_BYOK_UI ? (
+        <ByokApiKeysModal
+          isOpen={byokModalOpen}
+          onClose={() => setByokModalOpen(false)}
+          onKeyAdded={handleByokKeyAdded}
+        />
+      ) : null}
     </Dialog>
   );
 }

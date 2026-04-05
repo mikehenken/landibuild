@@ -495,6 +495,22 @@ export const userModelProviders = sqliteTable('user_model_providers', {
 }));
 
 /**
+ * Named bundles of per-agent model overrides (user-scoped). JSON maps AgentActionKey -> ModelConfigUpdate fields.
+ */
+export const userModelConfigPresets = sqliteTable('user_model_config_presets', {
+    id: text('id').primaryKey(),
+    userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+    name: text('name').notNull(),
+    description: text('description'),
+    configsJson: text('configs_json').notNull(),
+    createdAt: integer('created_at', { mode: 'timestamp' }).default(sql`(unixepoch())`),
+    updatedAt: integer('updated_at', { mode: 'timestamp' }).default(sql`(unixepoch())`),
+}, (table) => ({
+    userIdx: index('user_model_config_presets_user_idx').on(table.userId),
+    userNameIdx: uniqueIndex('user_model_config_presets_user_name_idx').on(table.userId, table.name),
+}));
+
+/**
  * Single-row table: bump when platform model catalog / bundle defaults change so clients can refetch.
  */
 export const modelConfigGlobalRevision = sqliteTable('model_config_global_revision', {
@@ -576,6 +592,9 @@ export type UserModelConfig = typeof userModelConfigs.$inferSelect;
 export type NewUserModelConfig = typeof userModelConfigs.$inferInsert;
 export type UserModelProvider = typeof userModelProviders.$inferSelect;
 export type NewUserModelProvider = typeof userModelProviders.$inferInsert;
+
+export type UserModelConfigPreset = typeof userModelConfigPresets.$inferSelect;
+export type NewUserModelConfigPreset = typeof userModelConfigPresets.$inferInsert;
 
 export type ModelConfigGlobalRevisionRow = typeof modelConfigGlobalRevision.$inferSelect;
 export type NewModelConfigGlobalRevisionRow = typeof modelConfigGlobalRevision.$inferInsert;

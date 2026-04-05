@@ -39,6 +39,7 @@ export default defineWorkersConfig({
       '**/node_modules/**',
       '**/dist/**',
       '**/.git/**',
+      '**/.cursor/**',
       '**/worker/api/routes/**',
       '**/test/worker-entry.ts',
       '**/container/monitor-cli.test.ts',

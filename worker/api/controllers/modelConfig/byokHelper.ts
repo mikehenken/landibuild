@@ -140,6 +140,7 @@ export function getPlatformEnabledProviders(env: Env): string[] {
 		'anthropic',
 		'openai',
 		'google-ai-studio',
+		'openrouter',
 		'workers',
 		'cerebras',
 		'groq',

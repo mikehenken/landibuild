@@ -11,6 +11,9 @@ export type {
 	ModelConfigsInfoMessage,
 	AgentDisplayConfig,
 	ModelConfigsInfo,
+	AgentUiEventName,
+	AgentProtocolInfoMessage,
+	AgentUiEventMessage,
 } from '../../worker/api/websocketTypes';
 
 export type { AgentState } from '../../worker/agents/core/state';

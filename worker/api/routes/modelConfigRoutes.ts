@@ -20,6 +20,10 @@ export function setupModelConfigRoutes(app: Hono<AppEnv>): void {
     modelConfigRouter.get('/', setAuthLevel(AuthConfig.authenticated), adaptController(ModelConfigController, ModelConfigController.getModelConfigs));
     modelConfigRouter.get('/defaults', setAuthLevel(AuthConfig.authenticated), adaptController(ModelConfigController, ModelConfigController.getDefaults));
     modelConfigRouter.get('/byok-providers', setAuthLevel(AuthConfig.authenticated), adaptController(ModelConfigController, ModelConfigController.getByokProviders));
+    modelConfigRouter.get('/presets', setAuthLevel(AuthConfig.authenticated), adaptController(ModelConfigController, ModelConfigController.listModelConfigPresets));
+    modelConfigRouter.post('/presets/from-current', setAuthLevel(AuthConfig.authenticated), adaptController(ModelConfigController, ModelConfigController.createModelConfigPresetFromCurrent));
+    modelConfigRouter.post('/presets/:presetId/apply', setAuthLevel(AuthConfig.authenticated), adaptController(ModelConfigController, ModelConfigController.applyModelConfigPreset));
+    modelConfigRouter.delete('/presets/:presetId', setAuthLevel(AuthConfig.authenticated), adaptController(ModelConfigController, ModelConfigController.deleteModelConfigPreset));
     modelConfigRouter.get('/:agentAction', setAuthLevel(AuthConfig.authenticated), adaptController(ModelConfigController, ModelConfigController.getModelConfig));
     modelConfigRouter.put('/:agentAction', setAuthLevel(AuthConfig.authenticated), adaptController(ModelConfigController, ModelConfigController.updateModelConfig));
     modelConfigRouter.delete('/:agentAction', setAuthLevel(AuthConfig.authenticated), adaptController(ModelConfigController, ModelConfigController.deleteModelConfig));

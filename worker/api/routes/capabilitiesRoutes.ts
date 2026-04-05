@@ -20,5 +20,12 @@ export function setupCapabilitiesRoutes(app: Hono<AppEnv>): void {
 		adaptController(CapabilitiesController, CapabilitiesController.getCapabilities),
 	);
 
+	// GET /api/capabilities/agent-wire — tool profile manifest for agents / orchestrators (public)
+	capabilitiesRouter.get(
+		'/agent-wire',
+		setAuthLevel(AuthConfig.public),
+		adaptController(CapabilitiesController, CapabilitiesController.getAgentWireManifest),
+	);
+
 	app.route('/api/capabilities', capabilitiesRouter);
 }

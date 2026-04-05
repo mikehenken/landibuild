@@ -1,8 +1,15 @@
 import { useRef, useState, useEffect, useMemo } from 'react';
 import { ArrowRight, Info } from 'react-feather';
+import { ChevronDown } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router';
 import { useAuth } from '@/contexts/auth-context';
 import { MAX_AGENT_QUERY_LENGTH, SUPPORTED_IMAGE_MIME_TYPES, type ProjectType } from '@/api-types';
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { useAuthGuard } from '../hooks/useAuthGuard';
 import { usePaginatedApps } from '@/hooks/use-paginated-apps';
 import { AnimatePresence, LayoutGroup, motion } from 'framer-motion';
@@ -14,24 +21,83 @@ import { ImageUploadButton } from '@/components/image-upload-button';
 import { ImageAttachmentPreview } from '@/components/image-attachment-preview';
 import { toast } from 'sonner';
 
+const HOME_BUILD_FOCUS_OPTIONS = [
+	{ id: 'landing-pages' as const, label: 'Landing Pages', projectType: 'app' as ProjectType },
+	{ id: 'sites' as const, label: 'Sites', projectType: 'app' as ProjectType },
+	{ id: 'slides' as const, label: 'Slides', projectType: 'presentation' as ProjectType },
+	{ id: 'vibe-code' as const, label: 'Vibe Code', projectType: 'general' as ProjectType },
+	{ id: 'dig' as const, label: 'Dig', projectType: 'general' as ProjectType },
+];
+
+export type HomeBuildFocusId = (typeof HOME_BUILD_FOCUS_OPTIONS)[number]['id'];
+
+function projectTypeToDefaultFocus(mode: ProjectType | null): HomeBuildFocusId {
+	switch (mode) {
+		case 'general':
+			return 'dig';
+		case 'presentation':
+			return 'slides';
+		case 'workflow':
+			return 'vibe-code';
+		case 'app':
+		default:
+			return 'landing-pages';
+	}
+}
+
 export default function Home() {
 	const navigate = useNavigate();
 	const [searchParams] = useSearchParams();
 	const { requireAuth } = useAuthGuard();
 	const textareaRef = useRef<HTMLTextAreaElement>(null);
 	
-	// Initialize projectMode from URL if present, otherwise default to 'app'
-	const initialMode = (searchParams.get('mode') as ProjectType) || 'app';
-	const [projectMode, setProjectMode] = useState<ProjectType>(initialMode);
+	const [buildFocus, setBuildFocus] = useState<HomeBuildFocusId>('landing-pages');
 
-	// Update projectMode if URL changes
+	const selectedBuildOption = useMemo(
+		() => HOME_BUILD_FOCUS_OPTIONS.find((o) => o.id === buildFocus) ?? HOME_BUILD_FOCUS_OPTIONS[0],
+		[buildFocus],
+	);
+
+	// Sync build focus from ?focus= or legacy ?mode=
 	useEffect(() => {
-		const mode = searchParams.get('mode') as ProjectType;
-		if (mode) {
-			setProjectMode(mode);
-		} else {
-			setProjectMode('app');
+		const focusParam = searchParams.get('focus');
+		if (
+			focusParam === 'landing-pages' ||
+			focusParam === 'sites' ||
+			focusParam === 'slides' ||
+			focusParam === 'vibe-code' ||
+			focusParam === 'dig'
+		) {
+			setBuildFocus(focusParam);
+			return;
 		}
+		const mode = searchParams.get('mode');
+		if (mode === 'research') {
+			setBuildFocus('dig');
+			return;
+		}
+		const projectMode = mode as ProjectType | null;
+		if (
+			projectMode === 'app' ||
+			projectMode === 'workflow' ||
+			projectMode === 'presentation' ||
+			projectMode === 'general'
+		) {
+			setBuildFocus(projectTypeToDefaultFocus(projectMode));
+		} else {
+			setBuildFocus('landing-pages');
+		}
+	}, [searchParams]);
+
+	// Sidebar "Websites" lands here with from=websites; focus the prompt input.
+	useEffect(() => {
+		if (searchParams.get('from') !== 'websites') {
+			return;
+		}
+		const id = requestAnimationFrame(() => {
+			textareaRef.current?.focus();
+		});
+		return () => cancelAnimationFrame(id);
 	}, [searchParams]);
 
 	const [query, setQuery] = useState('');
@@ -72,7 +138,7 @@ export default function Home() {
 	// Discover section should appear only when enough apps are available and loading is done
 	const discoverReady = useMemo(() => !loading && (apps?.length ?? 0) > 5, [loading, apps]);
 
-	const handleCreateApp = (query: string, mode: ProjectType) => {
+	const handleCreateApp = (query: string, projectType: ProjectType, focus: HomeBuildFocusId) => {
 		if (query.length > MAX_AGENT_QUERY_LENGTH) {
 			toast.error(
 				`Prompt too large (${query.length} characters). Maximum allowed is ${MAX_AGENT_QUERY_LENGTH} characters.`,
@@ -81,11 +147,12 @@ export default function Home() {
 		}
 
 		const encodedQuery = encodeURIComponent(query);
-		const encodedMode = encodeURIComponent(mode);
+		const encodedMode = encodeURIComponent(projectType);
+		const encodedFocus = encodeURIComponent(focus);
 
 		// Encode images as JSON if present
 		const imageParam = images.length > 0 ? `&images=${encodeURIComponent(JSON.stringify(images))}` : '';
-		const intendedUrl = `/chat/new?query=${encodedQuery}&projectType=${encodedMode}${imageParam}`;
+		const intendedUrl = `/chat/new?query=${encodedQuery}&projectType=${encodedMode}&focus=${encodedFocus}${imageParam}`;
 
 		if (
 			!requireAuth({
@@ -173,7 +240,7 @@ export default function Home() {
 							onSubmit={(e) => {
 								e.preventDefault();
 								const query = textareaRef.current!.value;
-								handleCreateApp(query, projectMode);
+								handleCreateApp(query, selectedBuildOption.projectType, buildFocus);
 							}}
 							className="flex z-10 flex-col w-full min-h-[150px] bg-[#1f1f1f] rounded-[18px] shadow-textarea p-5 transition-all duration-200"
 						>
@@ -204,7 +271,7 @@ export default function Home() {
 										if (e.key === 'Enter' && !e.shiftKey) {
 											e.preventDefault();
 											const query = textareaRef.current!.value;
-											handleCreateApp(query, projectMode);
+											handleCreateApp(query, selectedBuildOption.projectType, buildFocus);
 										}
 									}}
 								/>
@@ -217,7 +284,30 @@ export default function Home() {
 									</div>
 								)}
 							</div>
-							<div className="flex items-center mt-4 pt-1 justify-end">
+							<div className="flex items-center mt-4 pt-1 justify-between gap-2">
+								<DropdownMenu>
+									<DropdownMenuTrigger
+										type="button"
+										className="flex items-center gap-1 rounded-xl px-2.5 py-1.5 text-sm text-text-primary/70 hover:text-text-primary hover:bg-white/5 outline-none border border-transparent data-[state=open]:border-text-primary/15 data-[state=open]:bg-white/5 transition-colors shrink-0"
+										aria-label="Build type"
+									>
+										<span className="max-w-[9rem] sm:max-w-none truncate">
+											{selectedBuildOption.label}
+										</span>
+										<ChevronDown className="size-4 opacity-70 shrink-0" strokeWidth={2} aria-hidden />
+									</DropdownMenuTrigger>
+									<DropdownMenuContent align="start" side="top" className="min-w-[11rem]">
+										{HOME_BUILD_FOCUS_OPTIONS.map((opt) => (
+											<DropdownMenuItem
+												key={opt.id}
+												onClick={() => setBuildFocus(opt.id)}
+												className={opt.id === buildFocus ? 'bg-accent/15' : ''}
+											>
+												{opt.label}
+											</DropdownMenuItem>
+										))}
+									</DropdownMenuContent>
+								</DropdownMenu>
 								<div className="flex items-center gap-2">
 									<ImageUploadButton
 										onFilesSelected={addImages}
@@ -226,6 +316,7 @@ export default function Home() {
 									<button
 										type="submit"
 										disabled={!query.trim()}
+										aria-label="Start build"
 										className="bg-accent text-white p-1 rounded-md *:size-5 transition-all duration-200 hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
 									>
 										<ArrowRight />

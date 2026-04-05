@@ -197,6 +197,341 @@ const MODELS_MASTER = {
         }
     },
 
+    // --- OpenRouter (unified OpenAI-compatible API; requires OPENROUTER_API_KEY or BYOK) ---
+    // Slugs after the openrouter/ prefix must match OpenRouter's `model` field exactly (see variants :free, :extended, etc.).
+    // Verify or refresh IDs against: https://openrouter.ai/docs/guides/overview/models.mdx and doc index https://openrouter.ai/docs/llms.txt
+    // Programmatic list: GET https://openrouter.ai/api/v1/models (see API reference).
+    OPENROUTER_Z_AI_GLM_4_7: {
+        id: 'openrouter/z-ai/glm-4.7',
+        config: {
+            name: 'GLM 4.7 (OpenRouter)',
+            size: ModelSize.LARGE,
+            provider: 'openrouter',
+            creditCost: 2,
+            contextSize: 202752,
+        }
+    },
+    OPENROUTER_Z_AI_GLM_5: {
+        id: 'openrouter/z-ai/glm-5',
+        config: {
+            name: 'GLM 5 (OpenRouter)',
+            size: ModelSize.LARGE,
+            provider: 'openrouter',
+            creditCost: 3,
+            contextSize: 200000,
+        }
+    },
+    OPENROUTER_GOOGLE_GEMINI_3_1_PRO_PREVIEW: {
+        id: 'openrouter/google/gemini-3.1-pro-preview',
+        config: {
+            name: 'Gemini 3.1 Pro Preview (OpenRouter)',
+            size: ModelSize.LARGE,
+            provider: 'openrouter',
+            creditCost: 8,
+            contextSize: 1048576,
+        }
+    },
+    OPENROUTER_GOOGLE_GEMINI_3_PRO_IMAGE_PREVIEW: {
+        id: 'openrouter/google/gemini-3-pro-image-preview',
+        config: {
+            name: 'Gemini 3 Pro Image Preview (OpenRouter)',
+            size: ModelSize.REGULAR,
+            provider: 'openrouter',
+            creditCost: 6,
+            contextSize: 1048576,
+        }
+    },
+    OPENROUTER_GOOGLE_GEMINI_3_FLASH_LITE: {
+        id: 'openrouter/google/gemini-3-flash-lite',
+        config: {
+            name: 'Gemini 3 Flash Lite (OpenRouter)',
+            size: ModelSize.LITE,
+            provider: 'openrouter',
+            creditCost: 1,
+            contextSize: 1048576,
+        }
+    },
+    OPENROUTER_GOOGLE_GEMINI_3_FLASH_LITE_PREVIEW: {
+        id: 'openrouter/google/gemini-3-flash-lite-preview',
+        config: {
+            name: 'Gemini 3 Flash Lite Preview (OpenRouter)',
+            size: ModelSize.LITE,
+            provider: 'openrouter',
+            creditCost: 1,
+            contextSize: 1048576,
+        }
+    },
+    OPENROUTER_GOOGLE_GEMINI_3_1_FLASH_IMAGE_PREVIEW: {
+        id: 'openrouter/google/gemini-3.1-flash-image-preview',
+        config: {
+            name: 'Gemini 3.1 Flash Image Preview (OpenRouter)',
+            size: ModelSize.REGULAR,
+            provider: 'openrouter',
+            creditCost: 4,
+            contextSize: 1048576,
+        }
+    },
+    OPENROUTER_QWEN3_CODER_480B: {
+        id: 'openrouter/qwen/qwen3-coder',
+        config: {
+            name: 'Qwen3 Coder 480B (OpenRouter)',
+            size: ModelSize.LARGE,
+            provider: 'openrouter',
+            creditCost: 1,
+            contextSize: 262144,
+        }
+    },
+    OPENROUTER_MOONSHOT_KIMI_K2: {
+        id: 'openrouter/moonshotai/kimi-k2',
+        config: {
+            name: 'Kimi K2 (OpenRouter)',
+            size: ModelSize.LARGE,
+            provider: 'openrouter',
+            creditCost: 2,
+            contextSize: 131072,
+        }
+    },
+    OPENROUTER_MOONSHOT_KIMI_K2_5: {
+        id: 'openrouter/moonshotai/kimi-k2.5',
+        config: {
+            name: 'Kimi K2.5 (OpenRouter)',
+            size: ModelSize.LARGE,
+            provider: 'openrouter',
+            creditCost: 3,
+            contextSize: 256000,
+        }
+    },
+    OPENROUTER_GOOGLE_GEMINI_2_5_PRO: {
+        id: 'openrouter/google/gemini-2.5-pro',
+        config: {
+            name: 'Gemini 2.5 Pro (OpenRouter)',
+            size: ModelSize.LARGE,
+            provider: 'openrouter',
+            creditCost: 5,
+            contextSize: 1048576,
+        }
+    },
+    OPENROUTER_GOOGLE_GEMINI_2_5_FLASH_LITE: {
+        id: 'openrouter/google/gemini-2.5-flash-lite',
+        config: {
+            name: 'Gemini 2.5 Flash-Lite (OpenRouter)',
+            size: ModelSize.LITE,
+            provider: 'openrouter',
+            creditCost: 0.4,
+            contextSize: 1048576,
+        }
+    },
+    OPENROUTER_QWEN_QWEN3_5_PLUS_02_15: {
+        id: 'openrouter/qwen/qwen3.5-plus-02-15',
+        config: {
+            name: 'Qwen3.5 Plus 2026-02-15 (OpenRouter)',
+            size: ModelSize.LARGE,
+            provider: 'openrouter',
+            creditCost: 4,
+            contextSize: 1048576,
+        }
+    },
+    OPENROUTER_OPENAI_GPT_5_3_CODEX: {
+        id: 'openrouter/openai/gpt-5.3-codex',
+        config: {
+            name: 'GPT-5.3 Codex (OpenRouter)',
+            size: ModelSize.LARGE,
+            provider: 'openrouter',
+            creditCost: 10,
+            contextSize: 400000,
+        }
+    },
+    OPENROUTER_QWEN_QWEN3_CODER_NEXT: {
+        id: 'openrouter/qwen/qwen3-coder-next',
+        config: {
+            name: 'Qwen3 Coder Next (OpenRouter)',
+            size: ModelSize.LARGE,
+            provider: 'openrouter',
+            creditCost: 2,
+            contextSize: 262144,
+        }
+    },
+    OPENROUTER_Z_AI_GLM_4_7_FLASH: {
+        id: 'openrouter/z-ai/glm-4.7-flash',
+        config: {
+            name: 'GLM 4.7 Flash (OpenRouter)',
+            size: ModelSize.LITE,
+            provider: 'openrouter',
+            creditCost: 0.5,
+            contextSize: 202752,
+        }
+    },
+    OPENROUTER_ARCEE_TRINITY_LARGE_PREVIEW_FREE: {
+        id: 'openrouter/arcee-ai/trinity-large-preview:free',
+        config: {
+            name: 'Trinity Large Preview (free) (OpenRouter)',
+            size: ModelSize.LITE,
+            provider: 'openrouter',
+            creditCost: 0,
+            contextSize: 131072,
+        }
+    },
+    OPENROUTER_QWEN_QWEN3_6_PLUS_FREE: {
+        id: 'openrouter/qwen/qwen3.6-plus:free',
+        config: {
+            name: 'Qwen3.6 Plus (free) (OpenRouter)',
+            size: ModelSize.LITE,
+            provider: 'openrouter',
+            creditCost: 0,
+            contextSize: 1048576,
+        }
+    },
+    OPENROUTER_MINIMAX_M2_5: {
+        id: 'openrouter/minimax/minimax-m2.5',
+        config: {
+            name: 'MiniMax M2.5 (OpenRouter)',
+            size: ModelSize.LARGE,
+            provider: 'openrouter',
+            creditCost: 2,
+            contextSize: 196608,
+        }
+    },
+    OPENROUTER_Z_AI_GLM_5_TURBO: {
+        id: 'openrouter/z-ai/glm-5-turbo',
+        config: {
+            name: 'GLM 5 Turbo (OpenRouter)',
+            size: ModelSize.REGULAR,
+            provider: 'openrouter',
+            creditCost: 5,
+            contextSize: 202752,
+        }
+    },
+    OPENROUTER_NVIDIA_NEMOTRON_3_SUPER_120B_A12B_FREE: {
+        id: 'openrouter/nvidia/nemotron-3-super-120b-a12b:free',
+        config: {
+            name: 'Nemotron 3 Super 120B A12B (free) (OpenRouter)',
+            size: ModelSize.LITE,
+            provider: 'openrouter',
+            creditCost: 0,
+            contextSize: 262144,
+        }
+    },
+    OPENROUTER_XIAOMI_MIMO_V2_PRO: {
+        id: 'openrouter/xiaomi/mimo-v2-pro',
+        config: {
+            name: 'MiMo V2 Pro (OpenRouter)',
+            size: ModelSize.LARGE,
+            provider: 'openrouter',
+            creditCost: 8,
+            contextSize: 1048576,
+        }
+    },
+    OPENROUTER_DEEPSEEK_V3_2: {
+        id: 'openrouter/deepseek/deepseek-v3.2',
+        config: {
+            name: 'DeepSeek V3.2 (OpenRouter)',
+            size: ModelSize.LARGE,
+            provider: 'openrouter',
+            creditCost: 2,
+            contextSize: 163840,
+        }
+    },
+    OPENROUTER_DEEPSEEK_R1_0528: {
+        id: 'openrouter/deepseek/deepseek-r1-0528',
+        config: {
+            name: 'DeepSeek R1 0528 (OpenRouter)',
+            size: ModelSize.LARGE,
+            provider: 'openrouter',
+            creditCost: 2,
+            contextSize: 163840,
+        }
+    },
+    OPENROUTER_META_LLAMA_3_3_70B_INSTRUCT: {
+        id: 'openrouter/meta-llama/llama-3.3-70b-instruct',
+        config: {
+            name: 'Llama 3.3 70B Instruct (OpenRouter)',
+            size: ModelSize.REGULAR,
+            provider: 'openrouter',
+            creditCost: 1,
+            contextSize: 131072,
+        }
+    },
+    OPENROUTER_OPENAI_GPT_5_4: {
+        id: 'openrouter/openai/gpt-5.4',
+        config: {
+            name: 'GPT-5.4 (OpenRouter)',
+            size: ModelSize.LARGE,
+            provider: 'openrouter',
+            creditCost: 6,
+            contextSize: 1050000,
+        }
+    },
+    OPENROUTER_OPENAI_GPT_5_2_CODEX: {
+        id: 'openrouter/openai/gpt-5.2-codex',
+        config: {
+            name: 'GPT-5.2 Codex (OpenRouter)',
+            size: ModelSize.LARGE,
+            provider: 'openrouter',
+            creditCost: 8,
+            contextSize: 400000,
+        }
+    },
+    OPENROUTER_GOOGLE_GEMMA_4_26B_A4B_IT: {
+        id: 'openrouter/google/gemma-4-26b-a4b-it',
+        config: {
+            name: 'Gemma 4 26B A4B IT (OpenRouter)',
+            size: ModelSize.REGULAR,
+            provider: 'openrouter',
+            creditCost: 1,
+            contextSize: 262144,
+        }
+    },
+    OPENROUTER_MISTRAL_LARGE_2512: {
+        id: 'openrouter/mistralai/mistral-large-2512',
+        config: {
+            name: 'Mistral Large 3 2512 (OpenRouter)',
+            size: ModelSize.LARGE,
+            provider: 'openrouter',
+            creditCost: 3,
+            contextSize: 262144,
+        }
+    },
+    OPENROUTER_QWEN_QWEN3_CODER_FREE: {
+        id: 'openrouter/qwen/qwen3-coder:free',
+        config: {
+            name: 'Qwen3 Coder 480B (free) (OpenRouter)',
+            size: ModelSize.LITE,
+            provider: 'openrouter',
+            creditCost: 0,
+            contextSize: 262000,
+        }
+    },
+    OPENROUTER_MINIMAX_M2_5_FREE: {
+        id: 'openrouter/minimax/minimax-m2.5:free',
+        config: {
+            name: 'MiniMax M2.5 (free) (OpenRouter)',
+            size: ModelSize.LITE,
+            provider: 'openrouter',
+            creditCost: 0,
+            contextSize: 196608,
+        }
+    },
+    OPENROUTER_QWEN_QWEN3_NEXT_80B_A3B_INSTRUCT_FREE: {
+        id: 'openrouter/qwen/qwen3-next-80b-a3b-instruct:free',
+        config: {
+            name: 'Qwen3 Next 80B A3B Instruct (free) (OpenRouter)',
+            size: ModelSize.LITE,
+            provider: 'openrouter',
+            creditCost: 0,
+            contextSize: 262144,
+        }
+    },
+    OPENROUTER_XAI_GROK_4_20_MULTI_AGENT: {
+        id: 'openrouter/x-ai/grok-4.20-multi-agent',
+        config: {
+            name: 'Grok 4.20 Multi-Agent (OpenRouter)',
+            size: ModelSize.LARGE,
+            provider: 'openrouter',
+            creditCost: 8,
+            contextSize: 2_000_000,
+        }
+    },
+
     // --- Anthropic Models ---
     CLAUDE_3_7_SONNET_20250219: {
         id: 'anthropic/claude-3-7-sonnet-20250219',

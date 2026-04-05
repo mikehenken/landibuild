@@ -185,6 +185,18 @@ export function createWebSocketMessageHandler(deps: HandleMessageDeps) {
         }
         
         switch (message.type) {
+            case 'agent_protocol_info': {
+                logger.info('Server supports agent UI protocol', message.protocolVersion, message.wireFormats);
+                break;
+            }
+
+            case 'agent_ui_event': {
+                // Future: handle AG-UI events here. For now, we ignore them to avoid duplicating
+                // the legacy conversation_response stream that currently drives the UI.
+                logger.debug('Received agent UI event (ignored in legacy mode)', message.eventName);
+                break;
+            }
+
             case 'conversation_cleared': {
                 // Reset chat messages to a subtle tool-event entry indicating success
                 setMessages(() => appendToolEvent([], 'conversation_cleared', {
@@ -918,6 +930,7 @@ export function createWebSocketMessageHandler(deps: HandleMessageDeps) {
 
                 const isArchive = conversationId.startsWith('archive-');
                 const placeholder = 'previous history was compacted';
+                const displayMessage = message.transcriptDisplay ?? message.message;
 
                 if (message.tool) {
                     const tool = message.tool;
@@ -930,16 +943,16 @@ export function createWebSocketMessageHandler(deps: HandleMessageDeps) {
                 }
 
                 if (message.isStreaming) {
-                    setMessages(prev => handleStreamingMessage(prev, conversationId, isArchive ? placeholder : message.message, false));
+                    setMessages(prev => handleStreamingMessage(prev, conversationId, isArchive ? placeholder : displayMessage, false));
                     break;
                 }
 
                 setMessages(prev => {
                     const idx = prev.findIndex(m => m.role === 'assistant' && m.conversationId === conversationId);
-                    if (idx !== -1) return prev.map((m, i) => i === idx ? { ...m, content: (isArchive ? placeholder : message.message) } : m);
+                    if (idx !== -1) return prev.map((m, i) => i === idx ? { ...m, content: (isArchive ? placeholder : displayMessage) } : m);
                     
                     // Deduplicate: Don't add if last assistant message has identical content
-                    const newContent = isArchive ? placeholder : message.message;
+                    const newContent = isArchive ? placeholder : displayMessage;
                     if (isAssistantMessageDuplicate(prev, newContent)) {
                         logger.debug('Skipping duplicate assistant message');
                         return prev; // Skip duplicate

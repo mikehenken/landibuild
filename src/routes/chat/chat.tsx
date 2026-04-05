@@ -7,11 +7,12 @@ import {
 	type FormEvent,
 } from 'react';
 import { useParams, useSearchParams, useNavigate } from 'react-router';
-import { AnimatePresence, motion } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { LoaderCircle, MoreHorizontal, RotateCcw } from 'lucide-react';
 import clsx from 'clsx';
 import { UserMessage, AIMessage } from './components/messages';
 import { PhaseTimeline } from './components/phase-timeline';
+import { ThinkingStageCards } from './components/thinking-stage-cards';
 import { type DebugMessage } from './components/debug-panel';
 import { DeploymentControls } from './components/deployment-controls';
 import { useChat } from './hooks/use-chat';
@@ -35,7 +36,8 @@ import { ChatModals } from './components/chat-modals';
 import { MainContentPanel } from './components/main-content-panel';
 import { ChatHeader } from './components/chat-header';
 import { ChatAttachmentsSheet } from './components/chat-attachments-sheet';
-import { ChatInput } from './components/chat-input';
+import { ChatInput, type PresentationSlideOption } from './components/chat-input';
+import { usePresentationFiles } from '@/features/presentation/hooks/use-presentation-files';
 import { ConfirmDeleteDialog } from '@/components/shared/ConfirmDeleteDialog';
 import { apiClient } from '@/lib/api-client';
 import { appEvents } from '@/lib/app-events';
@@ -54,6 +56,9 @@ export default function Chat() {
 	const [searchParams] = useSearchParams();
 	const userQuery = searchParams.get('query');
 	const urlProjectType = searchParams.get('projectType') || 'app';
+	const urlBuildFocus = searchParams.get('focus');
+	const isLandingPagesWebsitesFlow =
+		urlChatId === 'new' && urlBuildFocus === 'landing-pages';
 
 	// Extract images from URL params if present
 	const userImages = useMemo(() => {
@@ -191,6 +196,8 @@ export default function Chat() {
 		query: userQuery,
 		images: userImages,
 		projectType: urlProjectType as ProjectType,
+		buildFocus: urlBuildFocus,
+		skipInitialGenerate: isLandingPagesWebsitesFlow,
 		onDebugMessage: addDebugMessage,
 		onVaultUnlockRequired: handleVaultUnlockRequired,
 		onModelCatalogRevision: () => {
@@ -217,6 +224,9 @@ export default function Chat() {
 
 	const [isResetDialogOpen, setIsResetDialogOpen] = useState(false);
 	const [isGitCloneModalOpen, setIsGitCloneModalOpen] = useState(false);
+	const [focusedPresentationSlidePath, setFocusedPresentationSlidePath] = useState<string | null>(
+		null,
+	);
 
 	// Model config info state
 	const [modelConfigs, setModelConfigs] = useState<ModelConfigsInfo | undefined>();
@@ -315,7 +325,9 @@ export default function Chat() {
 	const messagesContainerRef = useRef<HTMLDivElement>(null);
 
 	const [newMessage, setNewMessage] = useState('');
-	const [messageIntent, setMessageIntent] = useState<'ask' | 'implement'>('ask');
+	const [messageIntent, setMessageIntent] = useState<'ask' | 'implement'>(() =>
+		urlChatId === 'new' ? 'implement' : 'ask',
+	);
 	const [showTooltip, setShowTooltip] = useState(false);
 
 	const { images, addImages, removeImage, clearImages, isProcessing } = useImageUpload({
@@ -356,6 +368,47 @@ export default function Chat() {
 
 		return result;
 	}, [files, templateDetails, projectType]);
+
+	const slideDirectory = templateDetails?.slideDirectory ?? 'public/slides';
+	const { slideFiles } = usePresentationFiles(
+		projectType === 'presentation' ? allFiles : [],
+		slideDirectory,
+	);
+
+	const presentationSlideOptions = useMemo((): PresentationSlideOption[] => {
+		if (projectType !== 'presentation') {
+			return [];
+		}
+		return slideFiles.map((s) => ({
+			path: s.filePath,
+			label: `Slide ${s.index + 1}: ${s.fileName}`,
+		}));
+	}, [projectType, slideFiles]);
+
+	useEffect(() => {
+		if (projectType !== 'presentation') {
+			setFocusedPresentationSlidePath(null);
+			return;
+		}
+		setFocusedPresentationSlidePath((prev) => {
+			if (!prev) {
+				return null;
+			}
+			return slideFiles.some((s) => s.filePath === prev) ? prev : null;
+		});
+	}, [projectType, slideFiles]);
+
+	// Sync focused slide with the presentation preview sidebar
+	useEffect(() => {
+		const handleSlideFocused = (e: Event) => {
+			const customEvent = e as CustomEvent<{ path: string }>;
+			if (customEvent.detail?.path) {
+				setFocusedPresentationSlidePath(customEvent.detail.path);
+			}
+		};
+		window.addEventListener('presentation-slide-focused', handleSlideFocused);
+		return () => window.removeEventListener('presentation-slide-focused', handleSlideFocused);
+	}, []);
 
 	const allChatImages = useMemo((): ChatAttachmentImage[] => {
 		const list: ChatAttachmentImage[] = [];
@@ -663,6 +716,13 @@ export default function Chat() {
 		return blueprintNotCompleted || isDebugging;
 	}, [projectStages, isDebugging]);
 
+	/**
+	 * Journey UI: phasic uses {@link PhaseTimeline} below; agentic uses the Plan strip ({@link ThinkingStageCards}).
+	 * Omit stages from each AIMessage bubble so the journey is not duplicated.
+	 */
+	const projectStagesForAssistantBubble = undefined;
+	const suppressStageProgressMarkdownInBubble = behaviorType !== 'agentic';
+
 	const chatFormRef = useRef<HTMLFormElement>(null);
 	const { isDragging: isChatDragging, dragHandlers: chatDragHandlers } = useDragDrop({
 		onFilesDropped: addImages,
@@ -679,11 +739,16 @@ export default function Chat() {
 				return;
 			}
 
-			// When generation is active, send as conversational AI suggestion
+			const slideFocusPrefix =
+				projectType === 'presentation' && focusedPresentationSlidePath
+					? `[User selected slide: ${focusedPresentationSlidePath}]\n\n`
+					: '';
+			const messageForAgent = slideFocusPrefix + newMessage;
+
 			websocket?.send(
 				JSON.stringify({
 					type: 'user_suggestion',
-					message: newMessage,
+					message: messageForAgent,
 					intent: messageIntent,
 					images: images.length > 0 ? images : undefined,
 				}),
@@ -697,7 +762,18 @@ export default function Chat() {
 			// Ensure we scroll after sending our own message
 			requestAnimationFrame(() => scrollToBottom());
 		},
-		[newMessage, websocket, sendUserMessage, isChatDisabled, scrollToBottom, images, clearImages, messageIntent],
+		[
+			newMessage,
+			websocket,
+			sendUserMessage,
+			isChatDisabled,
+			scrollToBottom,
+			images,
+			clearImages,
+			messageIntent,
+			projectType,
+			focusedPresentationSlidePath,
+		],
 	);
 
 	const [progress, total] = useMemo((): [number, number] => {
@@ -770,7 +846,8 @@ export default function Chat() {
 								)}
 								ref={messagesContainerRef}
 							>
-								<div className="max-w-[720px] mx-auto w-full px-4 pt-5 pb-4 text-base flex flex-col gap-5">
+								<div className="min-h-full w-full flex flex-col justify-end gap-5 pb-4">
+								<div className="max-w-[720px] mx-auto w-full px-4 text-base flex flex-col gap-5">
 									{appLoading ? (
 										<div className="flex items-center gap-2 text-text-tertiary">
 											<LoaderCircle className="size-4 animate-spin" />
@@ -793,6 +870,8 @@ export default function Chat() {
 												message={mainMessage.content}
 												isThinking={mainMessage.ui?.isThinking}
 												toolEvents={mainMessage.ui?.toolEvents}
+												projectStages={projectStagesForAssistantBubble}
+												suppressStageProgressMarkdown={suppressStageProgressMarkdownInBubble}
 											/>
 											{chatId && (
 												<div className="absolute right-1 top-1">
@@ -832,6 +911,8 @@ export default function Chat() {
 													message={message.content}
 													isThinking={true}
 													toolEvents={message.ui?.toolEvents}
+													projectStages={projectStagesForAssistantBubble}
+													suppressStageProgressMarkdown={suppressStageProgressMarkdownInBubble}
 												/>
 											</div>
 										))}
@@ -841,14 +922,23 @@ export default function Chat() {
 											<AIMessage
 												message="Planning next phase..."
 												isThinking={true}
+												projectStages={projectStagesForAssistantBubble}
+												suppressStageProgressMarkdown={suppressStageProgressMarkdownInBubble}
 											/>
 										</div>
 									)}
 								</div>
 
-								{/* Plan / phases: full 780px column width */}
+								{/* Plan / journey: phasic uses PhaseTimeline; agentic uses ThinkingStageCards (PhaseTimeline is hidden for agentic). */}
+								{behaviorType === 'agentic' && projectStages.length > 0 && (
+									<div className="w-full max-w-[718px] mx-auto px-4 shrink-0 mb-4">
+										<p className="text-xs font-medium text-text-tertiary mb-2">Plan</p>
+										<ThinkingStageCards stages={projectStages} />
+									</div>
+								)}
+
 								{behaviorType !== 'agentic' && (
-									<div className="w-full max-w-[780px] mx-auto px-4">
+									<div className="w-full max-w-[780px] mx-auto px-4 shrink-0">
 										<PhaseTimeline
 											projectStages={projectStages}
 											phaseTimeline={phaseTimeline}
@@ -883,7 +973,7 @@ export default function Chat() {
 										initial={{ opacity: 0, y: 20 }}
 										animate={{ opacity: 1, y: 0 }}
 										transition={{ duration: 0.3, delay: 0.2 }}
-										className="px-4 mb-6 w-full max-w-[780px] mx-auto"
+										className="px-4 mb-6 w-full max-w-[780px] mx-auto shrink-0"
 									>
 										<DeploymentControls
 											isPhase1Complete={isPhase1Complete}
@@ -913,7 +1003,7 @@ export default function Chat() {
 									</motion.div>
 								)}
 
-								<div className="max-w-[720px] mx-auto w-full px-4 pb-4 text-base flex flex-col gap-5">
+								<div className="max-w-[720px] mx-auto w-full px-4 pb-2 text-base flex flex-col gap-5 shrink-0">
 									{otherMessages
 										.filter((message) => !message.ui?.isThinking)
 										.map((message) => {
@@ -924,6 +1014,8 @@ export default function Chat() {
 														message={message.content}
 														isThinking={message.ui?.isThinking}
 														toolEvents={message.ui?.toolEvents}
+														projectStages={projectStagesForAssistantBubble}
+														suppressStageProgressMarkdown={suppressStageProgressMarkdownInBubble}
 													/>
 												);
 											}
@@ -935,6 +1027,7 @@ export default function Chat() {
 												/>
 											);
 										})}
+								</div>
 								</div>
 							</div>
 
@@ -958,6 +1051,9 @@ export default function Chat() {
 								websocket={websocket}
 								chatFormRef={chatFormRef}
 								imageInputRef={imageInputRef}
+								presentationSlides={projectType === 'presentation' ? presentationSlideOptions : undefined}
+								focusedPresentationSlidePath={focusedPresentationSlidePath}
+								onFocusedPresentationSlideChange={setFocusedPresentationSlidePath}
 							/>
 						</motion.div>
 					</ResizablePanel>

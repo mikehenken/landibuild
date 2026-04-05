@@ -28,6 +28,13 @@ describe('byokHelper', () => {
 			expect(getAccessProviderFromModelId('openai/gpt-5-mini')).toBe('openai');
 		});
 
+		it('maps openrouter registry prefix to openrouter provider', () => {
+			expect(getAccessProviderFromModelId(AIModels.OPENROUTER_QWEN3_CODER_480B)).toBe(
+				'openrouter',
+			);
+			expect(getAccessProviderFromModelId('openrouter/qwen/qwen3-coder')).toBe('openrouter');
+		});
+
 		it('returns cloudflare for ids without a slash (getProviderFromModel)', () => {
 			expect(getProviderFromModel(AIModels.DISABLED)).toBe('cloudflare');
 			expect(getAccessProviderFromModelId(AIModels.DISABLED)).toBe('cloudflare');
@@ -71,6 +78,13 @@ describe('byokHelper', () => {
 				OPENAI_API_KEY: 'sk-1234567890',
 			});
 			expect(getPlatformEnabledProviders(env)).toContain('openai');
+		});
+
+		it('adds openrouter when OPENROUTER_API_KEY is valid', () => {
+			const env = minimalEnv({
+				OPENROUTER_API_KEY: 'sk-or-123456789012345678901234',
+			});
+			expect(getPlatformEnabledProviders(env)).toContain('openrouter');
 		});
 	});
 

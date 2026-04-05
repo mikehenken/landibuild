@@ -88,6 +88,11 @@ export type {
   ModelConfigDefaultsData,
   ModelConfigDeleteData,
   ByokProvidersData,
+  ModelConfigPresetSummary,
+  ModelConfigPresetsListData,
+  ModelConfigPresetMutationData,
+  ModelConfigPresetApplyData,
+  ModelConfigPresetDeleteData,
   UserProviderStatus,
   ModelsByProvider
 } from 'worker/api/controllers/modelConfig/types';

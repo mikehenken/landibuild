@@ -18,7 +18,7 @@ import { AgentInfrastructure } from "./AgentCore";
 import { ProjectType } from './types';
 import { Connection } from 'agents';
 import { handleWebSocketMessage, handleWebSocketClose, broadcastToConnections, sendToConnection } from './websocket';
-import { WebSocketMessageData, WebSocketMessageType } from "worker/api/websocketTypes";
+import { WebSocketMessageData, WebSocketMessageType, AGENT_UI_PROTOCOL_VERSION } from "worker/api/websocketTypes";
 import { PreviewType, TemplateDetails } from "worker/services/sandbox/sandboxTypes";
 import { WebSocketMessageResponses } from "../constants";
 import { AppService, ModelConfigService } from "worker/database";
@@ -252,6 +252,13 @@ export class CodeGeneratorAgent extends Agent<Env, AgentState> implements AgentI
             templateDetails: this.behavior.getTemplateDetails(),
             previewUrl: previewUrl
         });
+        
+        // Broadcast protocol info for capable clients
+        sendToConnection(connection, WebSocketMessageResponses.AGENT_PROTOCOL_INFO, {
+            protocolVersion: AGENT_UI_PROTOCOL_VERSION,
+            wireFormats: ['legacy_conversation_response', 'agent_ui_event_v1']
+        });
+
         void this.emitModelCatalogRevision(connection);
     }
 

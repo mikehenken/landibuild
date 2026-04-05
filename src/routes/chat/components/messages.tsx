@@ -6,10 +6,12 @@ import rehypeExternalLinks from 'rehype-external-links';
 import { LoaderCircle, Check, AlertTriangle, ChevronDown, ChevronRight, MessageSquare } from 'lucide-react';
 import type { ToolEvent } from '../utils/message-helpers';
 import type { ConversationMessage } from '@/api-types';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { DebugSessionBubble } from './debug-session-bubble';
 import type { ChatAttachmentImage } from '../types/chat-attachment-image';
 import { chatAttachmentImageSrc } from '../types/chat-attachment-image';
+import type { ProjectStage } from '../utils/project-stage-helpers';
+import { extractThinkingHeadline, isStageProgressMarkdown, ThinkingStageCards } from './thinking-stage-cards';
 
 /**
  * Strip internal system tags that should not be displayed to users
@@ -295,12 +297,32 @@ export function AIMessage({
 	message,
 	isThinking,
 	toolEvents = [],
+	projectStages,
+	/** When true (phasic + timeline), strip bootstrap/blueprint/code bullet lists from the bubble — timeline shows stages. */
+	suppressStageProgressMarkdown = false,
 }: {
 	message: string;
 	isThinking?: boolean;
 	toolEvents?: ToolEvent[];
+	/** When set with isThinking, shows card-style stage progress instead of a flat markdown list. */
+	projectStages?: ProjectStage[];
+	suppressStageProgressMarkdown?: boolean;
 }) {
 	const sanitizedMessage = sanitizeMessageForDisplay(message);
+	const displayMessage = useMemo(() => {
+		if (suppressStageProgressMarkdown && isStageProgressMarkdown(sanitizedMessage)) {
+			return extractThinkingHeadline(sanitizedMessage);
+		}
+		return sanitizedMessage;
+	}, [sanitizedMessage, suppressStageProgressMarkdown]);
+	const hasInlineStreamingTools = toolEvents.some(ev => ev.contentLength !== undefined);
+	const showStageCards = Boolean(
+		projectStages &&
+			projectStages.length > 0 &&
+			(isThinking || isStageProgressMarkdown(sanitizedMessage)) &&
+			!hasInlineStreamingTools,
+	);
+	const thinkingHeadline = showStageCards ? extractThinkingHeadline(sanitizedMessage) : '';
 	
 	// Check if this is a debug session (active or just completed in this session)
 	const debugEvent = toolEvents.find(ev => ev.name === 'deep_debug');
@@ -367,10 +389,10 @@ export function AIMessage({
 	const inlineToolEvents = toolEvents.filter(ev => ev.contentLength !== undefined)
 		.sort((a, b) => (a.contentLength ?? 0) - (b.contentLength ?? 0));
 	
-	const orderedContent = buildOrderedContent(sanitizedMessage, inlineToolEvents);
+	const orderedContent = buildOrderedContent(displayMessage, inlineToolEvents);
 	
 	// Don't render if completely empty
-	if (!sanitizedMessage && !topToolEvents.length && !orderedContent.length) {
+	if (!displayMessage && !topToolEvents.length && !orderedContent.length) {
 		return null;
 	}
 	
@@ -382,11 +404,23 @@ export function AIMessage({
 			<div className="flex flex-col gap-2 min-w-0 text-base">
 				<div className="font-mono font-medium text-text-50">Orange</div>
 				
-				{/* Message content with inline tool events (from streaming) */}
-				{orderedContent.length > 0 && (
-					<div className={clsx(isThinking && 'animate-pulse')}>
-						<MessageContentRenderer content={sanitizedMessage} toolEvents={inlineToolEvents} />
+				{showStageCards ? (
+					<div className={clsx('flex flex-col gap-3', isThinking && 'animate-pulse')}>
+						{thinkingHeadline ? (
+							<div className="text-text-secondary/90 text-[15px] leading-relaxed">
+								<Markdown className="prose prose-invert prose-sm max-w-none [&_p]:my-1">
+									{thinkingHeadline}
+								</Markdown>
+							</div>
+						) : null}
+						<ThinkingStageCards stages={projectStages!} />
 					</div>
+				) : (
+					orderedContent.length > 0 && (
+						<div className={clsx(isThinking && 'animate-pulse')}>
+							<MessageContentRenderer content={displayMessage} toolEvents={inlineToolEvents} />
+						</div>
+					)
 				)}
 				
 				{/* Completed tools (from restoration) - shown at end */}

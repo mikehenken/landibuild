@@ -3,6 +3,8 @@ import { AgentActionKey } from "./inferutils/config.types";
 
 export const WebSocketMessageResponses: Record<string, WebSocketMessageType> = {
     AGENT_CONNECTED: 'agent_connected',
+    AGENT_PROTOCOL_INFO: 'agent_protocol_info',
+    AGENT_UI_EVENT: 'agent_ui_event',
     MODEL_CATALOG_REVISION: 'model_catalog_revision',
     ARTIFACT_PREVIEW: 'artifact_preview',
 

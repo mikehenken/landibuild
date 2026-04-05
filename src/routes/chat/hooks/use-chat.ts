@@ -51,6 +51,8 @@ export function useChat({
 	query: userQuery,
 	images: userImages,
 	projectType = 'app',
+	buildFocus,
+	skipInitialGenerate = false,
 	onDebugMessage,
 	onTerminalMessage,
 	onVaultUnlockRequired,
@@ -60,6 +62,10 @@ export function useChat({
 	query: string | null;
 	images?: ImageAttachment[];
 	projectType?: ProjectType;
+	/** Mirrors homepage `focus` query param; forwarded to createAgentSession for model routing. */
+	buildFocus?: string | null;
+	/** When true, new chats connect without auto `generate_all` (conversational / Ask-first flows). */
+	skipInitialGenerate?: boolean;
 	onDebugMessage?: (type: 'error' | 'warning' | 'info' | 'websocket', message: string, details?: string, source?: string, messageType?: string, rawMessage?: unknown) => void;
 	onTerminalMessage?: (log: { id: string; content: string; type: 'command' | 'stdout' | 'stderr' | 'info' | 'error' | 'warn' | 'debug'; timestamp: number; source?: string }) => void;
 	onVaultUnlockRequired?: (reason: string) => void;
@@ -347,8 +353,8 @@ export function useChat({
 					// Always request conversation state explicitly (running/full history)
 					sendWebSocketMessage(ws, 'get_conversation_state');
 
-					// Request file generation for new chats only
-					if (!disableGenerate && urlChatId === 'new') {
+					// Request file generation for new chats only (skip for Ask-first / landing-pages Websites flow)
+					if (!disableGenerate && urlChatId === 'new' && !skipInitialGenerate) {
 						logger.debug('🔄 Starting code generation for new chat');
 						setIsGenerating(true);
 						sendWebSocketMessage(ws, 'generate_all');
@@ -395,7 +401,7 @@ export function useChat({
 				handleConnectionFailureRef.current?.(wsUrl, disableGenerate, 'Connection setup failed');
 			}
 		},
-		[maxRetries, handleWebSocketMessage, urlChatId],
+		[maxRetries, handleWebSocketMessage, urlChatId, skipInitialGenerate],
 	);
 
 	// Handle connection failures with exponential backoff retry
@@ -478,6 +484,7 @@ export function useChat({
 						query: userQuery,
 						projectType,
 						images: userImages, // Pass images from URL params for multi-modal blueprint
+						...(buildFocus ? { buildFocus } : {}),
 					});
 
 					const parser = createRepairingJSONParser();
@@ -558,7 +565,13 @@ export function useChat({
 					const finalBehaviorType = getBehaviorTypeForProject(projectType);
 					if (finalBehaviorType === 'phasic') {
 						sendMessage(
-							createAIMessage('main', 'Blueprint generation complete. Now starting the code generation...', true),
+							createAIMessage(
+								'main',
+								skipInitialGenerate
+									? 'Blueprint is ready. Chat is in Ask mode; switch to Auto when you want implementation to start.'
+									: 'Blueprint generation complete. Now starting the code generation...',
+								true,
+							),
 						);
 					}
 
@@ -619,11 +632,13 @@ export function useChat({
 		}
 		init();
 	}, [
+		buildFocus,
 		projectType,
 		connectWithRetry,
 		loadBootstrapFiles,
 		onDebugMessage,
 		sendMessage,
+		skipInitialGenerate,
 		updateStage,
 		urlChatId,
 		userImages,

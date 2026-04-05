@@ -22,7 +22,7 @@
 /* Special handling for logo button */
 .group[data-collapsible="icon"] .logo-button {
   min-width: auto !important;
-  padding: 12px !important;
+  padding: 12px !important;                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              
   margin: 0 !important;
 }
 

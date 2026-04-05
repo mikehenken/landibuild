@@ -36,12 +36,14 @@ import { VaultUnlockModal } from '@/components/vault/VaultUnlockModal';
 import { VaultSetupWizard } from '@/components/vault/VaultSetupWizard';
 import { toast } from 'sonner';
 import type { SecretTemplate } from '@/api-types';
+import { getBYOKTemplates as getBYOKTemplatesFromWorker } from 'worker/types/secretsTemplates';
 
 // Import provider logos
 import OpenAILogo from '@/assets/provider-logos/openai.svg?react';
 import AnthropicLogo from '@/assets/provider-logos/anthropic.svg?react';
 import GoogleLogo from '@/assets/provider-logos/google.svg?react';
 import CerebrasLogo from '@/assets/provider-logos/cerebras.svg?react';
+import CloudflareLogo from '@/assets/provider-logos/cloudflare.svg?react';
 interface ByokApiKeysModalProps {
 	isOpen: boolean;
 	onClose: () => void;
@@ -63,6 +65,7 @@ const PROVIDER_LOGOS: Record<string, React.ComponentType<{ className?: string }>
 	anthropic: AnthropicLogo,
 	'google-ai-studio': GoogleLogo,
 	cerebras: CerebrasLogo,
+	workers: CloudflareLogo,
 };
 
 interface BYOKProvider {
@@ -122,17 +125,32 @@ export function ByokApiKeysModal({ isOpen, onClose, onKeyAdded }: ByokApiKeysMod
 	const loadBYOKProviders = useCallback(async () => {
 		try {
 			setIsLoading(true);
-			const response = await apiClient.getBYOKTemplates();
+			let templates: SecretTemplate[] = [];
 
-			if (response.success && response.data) {
-				const providers = response.data.templates.map(templateToBYOKProvider);
-				setBYOKProviders(providers);
+			try {
+				const response = await apiClient.getBYOKTemplates();
+				if (response.success && response.data?.templates?.length) {
+					templates = response.data.templates;
+				}
+			} catch (apiError) {
+				console.error('BYOK templates API failed:', apiError);
+			}
+
+			if (templates.length === 0) {
+				templates = getBYOKTemplatesFromWorker();
+			}
+
+			if (templates.length === 0) {
+				toast.error('No BYOK providers are available');
+				setBYOKProviders([]);
 			} else {
-				toast.error('Failed to load BYOK providers');
+				const providers = templates.map(templateToBYOKProvider);
+				setBYOKProviders(providers);
 			}
 		} catch (error) {
 			console.error('Error loading BYOK templates:', error);
 			toast.error('Failed to load BYOK providers');
+			setBYOKProviders([]);
 		} finally {
 			setIsLoading(false);
 		}
@@ -374,12 +392,20 @@ export function ByokApiKeysModal({ isOpen, onClose, onKeyAdded }: ByokApiKeysMod
 										{[1, 2, 3, 4].map((i) => (
 											<div
 												key={i}
-												className="w-full flex items-center gap-3 p-3 rounded-lg border-2 border-gray-200"
+												className="w-full flex items-center gap-3 p-3 rounded-lg border border-border-primary/60 bg-bg-2/40"
 											>
-												<div className="w-8 h-8 bg-gray-200 rounded-md animate-pulse" />
-												<div className="h-4 bg-gray-200 rounded animate-pulse flex-1" />
+												<div className="w-8 h-8 bg-bg-2 rounded-md animate-pulse border border-border-primary/40" />
+												<div className="h-4 bg-bg-2 rounded animate-pulse flex-1 border border-border-primary/30" />
 											</div>
 										))}
+									</div>
+								) : byokProviders.length === 0 ? (
+									<div className="rounded-lg border border-border-primary/60 bg-bg-2/30 px-4 py-6 text-center text-sm text-text-tertiary">
+										<p className="text-text-primary font-medium mb-1">No providers to show</p>
+										<p className="mb-3">Check your connection and try again.</p>
+										<Button type="button" variant="outline" size="sm" onClick={() => loadBYOKProviders()}>
+											Reload providers
+										</Button>
 									</div>
 								) : (
 									<div className="space-y-2">
@@ -388,15 +414,16 @@ export function ByokApiKeysModal({ isOpen, onClose, onKeyAdded }: ByokApiKeysMod
 											const isSelected = selectedProvider === providerOption.id;
 											return (
 												<button
+													type="button"
 													key={providerOption.id}
 													onClick={() => handleProviderSelect(providerOption.id)}
-													className={`w-full flex items-center gap-3 p-3 rounded-lg border-2 transition-all duration-200 text-left ${
+													className={`w-full flex items-center gap-3 p-3 rounded-lg border-2 transition-all duration-200 text-left text-text-primary ${
 														isSelected
-															? 'border-blue-500 bg-blue-50'
-															: 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+															? 'border-primary bg-primary/10 shadow-sm'
+															: 'border-border-primary/70 bg-bg-2/40 hover:border-primary/50 hover:bg-bg-2'
 													}`}
 												>
-													<div className="flex items-center justify-center w-8 h-8 bg-white rounded-md border shadow-sm">
+													<div className="flex items-center justify-center w-8 h-8 bg-bg-3 rounded-md border border-border-primary/50 shadow-sm">
 														<LogoComponent className="h-5 w-5" />
 													</div>
 													<span className="font-medium">{providerOption.name}</span>
@@ -587,6 +614,7 @@ export function ByokApiKeysModal({ isOpen, onClose, onKeyAdded }: ByokApiKeysMod
 			{/* Vault Setup Modal */}
 			<Dialog open={showSetupModal} onOpenChange={setShowSetupModal}>
 				<DialogContent className="sm:max-w-lg p-0 overflow-hidden">
+					<DialogTitle className="sr-only">Set up encryption vault</DialogTitle>
 					<VaultSetupWizard
 						open={showSetupModal}
 						onComplete={handleSetupComplete}

@@ -22,7 +22,24 @@ export function getProviderInfo(modelValue?: string): ProviderInfo {
 	if (modelValue.includes('cerebras/')) {
 		return { name: 'Cerebras', color: 'bg-purple-100 text-purple-800 dark:bg-purple-900/20 dark:text-purple-400' };
 	}
-	if (modelValue.includes('[openrouter]')) {	
+	if (modelValue.startsWith('openrouter/') || modelValue.includes('[openrouter]')) {
+		return { name: 'OpenRouter', color: 'bg-pink-100 text-pink-800 dark:bg-pink-900/20 dark:text-pink-400' };
+	}
+	if (
+		modelValue.startsWith('z-ai/') ||
+		modelValue.startsWith('qwen/') ||
+		modelValue.startsWith('moonshotai/') ||
+		modelValue.startsWith('arcee-ai/') ||
+		modelValue.startsWith('x-ai/') ||
+		modelValue.startsWith('minimax/') ||
+		modelValue.startsWith('nvidia/') ||
+		modelValue.startsWith('xiaomi/') ||
+		modelValue.startsWith('deepseek/') ||
+		modelValue.startsWith('meta-llama/') ||
+		modelValue.startsWith('mistralai/') ||
+		modelValue.startsWith('stepfun/') ||
+		modelValue.startsWith('nousresearch/')
+	) {
 		return { name: 'OpenRouter', color: 'bg-pink-100 text-pink-800 dark:bg-pink-900/20 dark:text-pink-400' };
 	}
 	if (modelValue.includes('workers-ai/') || modelValue.includes('workers/')) {

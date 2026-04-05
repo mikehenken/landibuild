@@ -11,6 +11,7 @@ import {
 	EyeOff,
 } from 'lucide-react';
 import { ModelConfigTabs } from '@/components/model-config-tabs';
+import { ModelConfigPresetsPanel } from '@/components/model-config-presets-panel';
 import type {
 	ModelConfigsData,
 	ModelConfigUpdate,
@@ -55,6 +56,7 @@ import {
 import { toast } from 'sonner';
 import { apiClient } from '@/lib/api-client';
 import { useCopyToClipboard } from '@/hooks/use-copy-to-clipboard';
+import { SHOW_API_KEYS_AND_BYOK_UI } from '@/constants/product-ui-flags';
 // import { SecretsManager } from '@/components/vault';
 
 export default function SettingsPage() {
@@ -419,7 +421,9 @@ export default function SettingsPage() {
 		if (user) {
 			loadActiveSessions();
 			loadModelConfigs();
-			loadApiKeys();
+			if (SHOW_API_KEYS_AND_BYOK_UI) {
+				void loadApiKeys();
+			}
 		}
 	}, [user]);
 
@@ -537,40 +541,43 @@ export default function SettingsPage() {
 								</div>
 							</div>
 						</CardHeader>
-						<CardContent className="space-y-6 px-6">
-							{/* Provider API Keys Integration */}
-							<div className="space-y-2 mt-6">
-								<h4 className="font-medium">
-									Provider API Keys
-								</h4>
-								<p className="text-sm text-text-tertiary">
-									AI provider API keys are managed in the "API
-									Keys & Secrets" section below. Configure
-									your OpenAI, Anthropic, Google AI, and
-									OpenRouter and Workers keys there.
-								</p>
-
-								<Button
-									variant="outline"
-									size="sm"
-									onClick={() => {
-										const secretsSection =
-											document.getElementById('api-keys');
-										if (secretsSection) {
-											secretsSection.scrollIntoView({
-												behavior: 'smooth',
-												block: 'start',
-											});
-										}
-									}}
-									className="gap-2 shrink-0"
+						<CardContent className="space-y-5 px-6 pt-4">
+							{SHOW_API_KEYS_AND_BYOK_UI ? (
+								<div
+									className="flex flex-col gap-3 rounded-lg border border-border-primary bg-bg-2/40 dark:bg-bg-3/25 px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
+									role="region"
+									aria-label="Provider API keys shortcut"
 								>
-														<Key className="h-4 w-4" />
-														API Keys
-								</Button>
-							</div>
+									<p className="text-sm text-text-secondary min-w-0">
+										<span className="font-medium text-text-primary">Bring your own keys</span>
+										<span className="text-text-tertiary"> · </span>
+										OpenAI, Anthropic, Google AI, OpenRouter, and Workers are configured in{' '}
+										<span className="text-text-primary">API Keys</span> on this page (section
+										below).
+									</p>
+									<Button
+										variant="outline"
+										size="sm"
+										onClick={() => {
+											const secretsSection = document.getElementById('api-keys');
+											if (secretsSection) {
+												secretsSection.scrollIntoView({
+													behavior: 'smooth',
+													block: 'start',
+												});
+											}
+										}}
+										className="gap-2 shrink-0 self-start sm:self-center"
+									>
+										<Key className="h-4 w-4" aria-hidden />
+										Go to API Keys
+									</Button>
+								</div>
+							) : null}
 
-							<Separator />
+							<ModelConfigPresetsPanel onPresetsChanged={() => void loadModelConfigs()} />
+
+							<Separator className="my-1" />
 
 							{/* Model Configuration Tabs */}
 							<ModelConfigTabs
@@ -591,6 +598,7 @@ export default function SettingsPage() {
 					{/* User Secrets Vault Section */}
 					{/* <SecretsManager id="secrets" /> */}
 
+					{SHOW_API_KEYS_AND_BYOK_UI ? (
 					<Card id="api-keys">
 						<CardHeader variant="minimal">
 							<div className="flex items-center gap-3 border-b w-full py-3 text-text-primary">
@@ -825,6 +833,7 @@ export default function SettingsPage() {
 							)}
 						</CardContent>
 					</Card>
+					) : null}
 
 					{/* Security Section */}
 					<Card id="security">

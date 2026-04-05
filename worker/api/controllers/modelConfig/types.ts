@@ -81,3 +81,34 @@ export interface ByokProvidersData {
     modelsByProvider: ModelsByProvider;
     platformModels: AIModels[];
 }
+
+/** User-scoped named model config bundles */
+export interface ModelConfigPresetSummary {
+    id: string;
+    name: string;
+    description: string | null;
+    agentActionCount: number;
+    createdAt: string;
+    updatedAt: string;
+    /** Shipping bundles from code (`builtin:…`); not persisted per user. */
+    isBuiltIn?: boolean;
+}
+
+export interface ModelConfigPresetsListData {
+    presets: ModelConfigPresetSummary[];
+    message: string;
+}
+
+export interface ModelConfigPresetMutationData {
+    preset: ModelConfigPresetSummary;
+    message: string;
+}
+
+export interface ModelConfigPresetApplyData {
+    appliedAgentActions: AgentActionKey[];
+    message: string;
+}
+
+export interface ModelConfigPresetDeleteData {
+    message: string;
+}

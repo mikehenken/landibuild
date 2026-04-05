@@ -22,8 +22,20 @@ import {
     ModelConfigResetData,
     ModelConfigDefaultsData,
     ModelConfigDeleteData,
-    ByokProvidersData
+    ByokProvidersData,
+    ModelConfigPresetsListData,
+    ModelConfigPresetSummary,
+    ModelConfigPresetMutationData,
+    ModelConfigPresetApplyData,
+    ModelConfigPresetDeleteData,
 } from './types';
+import type { PresetConfigsMap } from '../../../agents/inferutils/modelConfigPresetMap';
+import { ModelConfigPresetService, type PresetAgentEntry } from '../../../database/services/ModelConfigPresetService';
+import {
+    getBuiltInModelConfigPresetConfigs,
+    isBuiltInModelConfigPresetId,
+    listBuiltInModelConfigPresetSummaries,
+} from '../../../agents/inferutils/builtInModelConfigPresets';
 import {
     getUserProviderStatus,
     getByokModels,
@@ -54,8 +66,40 @@ const modelTestSchema = z.object({
     tempConfig: modelConfigUpdateSchema.optional()
 });
 
+const createPresetFromCurrentSchema = z.object({
+    name: z.string().min(1).max(100),
+    description: z.string().max(500).optional().nullable(),
+});
+
 export class ModelConfigController extends BaseController {
     static logger = createLogger('ModelConfigController');
+
+    private static buildFullModelConfigForPresetApply(
+        agentAction: AgentActionKey,
+        entry: PresetAgentEntry,
+    ): Partial<ModelConfig> {
+        const d = AGENT_CONFIG[agentAction];
+        return {
+            name:
+                entry.modelName !== undefined && entry.modelName !== null && entry.modelName !== ''
+                    ? entry.modelName
+                    : d.name,
+            max_tokens:
+                entry.maxTokens !== undefined && entry.maxTokens !== null ? entry.maxTokens : d.max_tokens,
+            temperature:
+                entry.temperature !== undefined && entry.temperature !== null ? entry.temperature : d.temperature,
+            reasoning_effort:
+                entry.reasoningEffort !== undefined && entry.reasoningEffort !== null
+                    ? (entry.reasoningEffort as ModelConfig['reasoning_effort'])
+                    : d.reasoning_effort,
+            fallbackModel:
+                entry.fallbackModel !== undefined &&
+                entry.fallbackModel !== null &&
+                entry.fallbackModel !== ''
+                    ? entry.fallbackModel
+                    : d.fallbackModel,
+        };
+    }
     /**
      * Get all model configurations for the current user
      * GET /api/model-configs
@@ -448,6 +492,216 @@ export class ModelConfigController extends BaseController {
         } catch (error) {
             this.logger.error('Error getting BYOK providers:', error);
             return ModelConfigController.createErrorResponse<ByokProvidersData>('Failed to get BYOK providers', 500);
+        }
+    }
+
+    static async listModelConfigPresets(
+        _request: Request,
+        env: Env,
+        _ctx: ExecutionContext,
+        context: RouteContext,
+    ): Promise<ControllerResponse<ApiResponse<ModelConfigPresetsListData>>> {
+        try {
+            const user = context.user!;
+            const builtIn = listBuiltInModelConfigPresetSummaries();
+            let userPresets: Awaited<ReturnType<ModelConfigPresetService['listPresets']>> = [];
+            try {
+                const presetService = new ModelConfigPresetService(env);
+                userPresets = await presetService.listPresets(user.id);
+            } catch (dbError) {
+                // Local dev often misses D1 migrations; still return built-ins so Settings does not 500.
+                this.logger.error('User model config presets query failed; returning built-ins only', {
+                    error: dbError,
+                    userId: user.id,
+                });
+            }
+            const presets: ModelConfigPresetSummary[] = [
+                ...builtIn,
+                ...userPresets.map((p) => ({ ...p, isBuiltIn: false as const })),
+            ];
+            return ModelConfigController.createSuccessResponse<ModelConfigPresetsListData>({
+                presets,
+                message: 'Presets retrieved successfully',
+            });
+        } catch (error) {
+            this.logger.error('Error listing model config presets:', error);
+            return ModelConfigController.createErrorResponse<ModelConfigPresetsListData>(
+                'Failed to list presets',
+                500,
+            );
+        }
+    }
+
+    static async createModelConfigPresetFromCurrent(
+        request: Request,
+        env: Env,
+        _ctx: ExecutionContext,
+        context: RouteContext,
+    ): Promise<ControllerResponse<ApiResponse<ModelConfigPresetMutationData>>> {
+        try {
+            const user = context.user!;
+            const bodyResult = await ModelConfigController.parseJsonBody(request);
+            if (!bodyResult.success) {
+                return bodyResult.response! as ControllerResponse<ApiResponse<ModelConfigPresetMutationData>>;
+            }
+            const validated = createPresetFromCurrentSchema.parse(bodyResult.data);
+            const presetService = new ModelConfigPresetService(env);
+            const detail = await presetService.createFromCurrentOverrides(
+                user.id,
+                validated.name,
+                validated.description ?? null,
+            );
+            const preset = {
+                id: detail.id,
+                name: detail.name,
+                description: detail.description,
+                agentActionCount: detail.agentActionCount,
+                createdAt: detail.createdAt,
+                updatedAt: detail.updatedAt,
+            };
+            return ModelConfigController.createSuccessResponse<ModelConfigPresetMutationData>({
+                preset,
+                message: 'Preset saved from your current overrides',
+            });
+        } catch (error) {
+            if (error instanceof z.ZodError) {
+                return ModelConfigController.createErrorResponse<ModelConfigPresetMutationData>(
+                    'Validation failed: ' + JSON.stringify(error.errors),
+                    400,
+                );
+            }
+            if (error instanceof Error) {
+                if (error.message.includes('UNIQUE constraint') || error.message.includes('unique')) {
+                    return ModelConfigController.createErrorResponse<ModelConfigPresetMutationData>(
+                        'A preset with this name already exists',
+                        409,
+                    );
+                }
+                return ModelConfigController.createErrorResponse<ModelConfigPresetMutationData>(error.message, 400);
+            }
+            this.logger.error('Error creating model config preset:', error);
+            return ModelConfigController.createErrorResponse<ModelConfigPresetMutationData>(
+                'Failed to create preset',
+                500,
+            );
+        }
+    }
+
+    static async applyModelConfigPreset(
+        _request: Request,
+        env: Env,
+        _ctx: ExecutionContext,
+        context: RouteContext,
+    ): Promise<ControllerResponse<ApiResponse<ModelConfigPresetApplyData>>> {
+        try {
+            const user = context.user!;
+            const presetId = context.pathParams?.presetId;
+            if (!presetId) {
+                return ModelConfigController.createErrorResponse<ModelConfigPresetApplyData>(
+                    'presetId is required',
+                    400,
+                );
+            }
+            const presetService = new ModelConfigPresetService(env);
+            let configs: PresetConfigsMap | null = null;
+            if (isBuiltInModelConfigPresetId(presetId)) {
+                configs = getBuiltInModelConfigPresetConfigs(presetId) ?? null;
+            } else {
+                const detail = await presetService.getPreset(user.id, presetId);
+                configs = detail?.configs ?? null;
+            }
+            if (!configs) {
+                return ModelConfigController.createErrorResponse<ModelConfigPresetApplyData>('Preset not found', 404);
+            }
+
+            const userProviderStatus = await getUserProviderStatus(user.id, env);
+            const modelConfigService = new ModelConfigService(env);
+            const appliedAgentActions: AgentActionKey[] = [];
+
+            for (const agentAction of Object.keys(configs) as AgentActionKey[]) {
+                const entry = configs[agentAction];
+                if (!entry) continue;
+                const full = ModelConfigController.buildFullModelConfigForPresetApply(agentAction, entry);
+
+                if (full.name) {
+                    const okPrimary = validateModelAccessForEnvironment(full.name, env, userProviderStatus);
+                    if (!okPrimary) {
+                        const provider = getAccessProviderFromModelId(full.name);
+                        return ModelConfigController.createErrorResponse<ModelConfigPresetApplyData>(
+                            `Model requires API key for provider '${provider}' (agent: ${agentAction}).`,
+                            403,
+                        );
+                    }
+                }
+                if (full.fallbackModel) {
+                    const okFb = validateModelAccessForEnvironment(full.fallbackModel, env, userProviderStatus);
+                    if (!okFb) {
+                        const provider = getAccessProviderFromModelId(full.fallbackModel);
+                        return ModelConfigController.createErrorResponse<ModelConfigPresetApplyData>(
+                            `Fallback model requires API key for provider '${provider}' (agent: ${agentAction}).`,
+                            403,
+                        );
+                    }
+                }
+
+                await modelConfigService.upsertUserModelConfig(user.id, agentAction, full);
+                appliedAgentActions.push(agentAction);
+            }
+
+            return ModelConfigController.createSuccessResponse<ModelConfigPresetApplyData>({
+                appliedAgentActions,
+                message:
+                    appliedAgentActions.length > 0
+                        ? `Applied preset to ${appliedAgentActions.length} agent configuration(s)`
+                        : 'No changes applied',
+            });
+        } catch (error) {
+            if (error instanceof Error && error.message.includes('not allowed')) {
+                return ModelConfigController.createErrorResponse<ModelConfigPresetApplyData>(error.message, 400);
+            }
+            this.logger.error('Error applying model config preset:', error);
+            return ModelConfigController.createErrorResponse<ModelConfigPresetApplyData>(
+                'Failed to apply preset',
+                500,
+            );
+        }
+    }
+
+    static async deleteModelConfigPreset(
+        _request: Request,
+        env: Env,
+        _ctx: ExecutionContext,
+        context: RouteContext,
+    ): Promise<ControllerResponse<ApiResponse<ModelConfigPresetDeleteData>>> {
+        try {
+            const user = context.user!;
+            const presetId = context.pathParams?.presetId;
+            if (!presetId) {
+                return ModelConfigController.createErrorResponse<ModelConfigPresetDeleteData>(
+                    'presetId is required',
+                    400,
+                );
+            }
+            if (isBuiltInModelConfigPresetId(presetId)) {
+                return ModelConfigController.createErrorResponse<ModelConfigPresetDeleteData>(
+                    'Built-in presets cannot be deleted',
+                    400,
+                );
+            }
+            const presetService = new ModelConfigPresetService(env);
+            const removed = await presetService.deletePreset(user.id, presetId);
+            if (!removed) {
+                return ModelConfigController.createErrorResponse<ModelConfigPresetDeleteData>('Preset not found', 404);
+            }
+            return ModelConfigController.createSuccessResponse<ModelConfigPresetDeleteData>({
+                message: 'Preset deleted',
+            });
+        } catch (error) {
+            this.logger.error('Error deleting model config preset:', error);
+            return ModelConfigController.createErrorResponse<ModelConfigPresetDeleteData>(
+                'Failed to delete preset',
+                500,
+            );
         }
     }
 }

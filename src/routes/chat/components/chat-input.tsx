@@ -1,16 +1,30 @@
 import { type FormEvent, type RefObject } from 'react';
 import { ArrowRight, Image as ImageIcon } from 'react-feather';
 import { WebSocket } from 'partysocket';
-import { X } from 'lucide-react';
+import { Presentation, X } from 'lucide-react';
 import { ImageAttachmentPreview } from '@/components/image-attachment-preview';
 import { sendWebSocketMessage } from '../utils/websocket-helpers';
 import { SUPPORTED_IMAGE_MIME_TYPES, type ImageAttachment } from '@/api-types';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import { Label } from '@/components/ui/label';
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from '@/components/ui/select';
 
 const MAX_WORDS = 4000;
+const SLIDE_FOCUS_ALL = '__all_slides__';
 const countWords = (text: string): number => {
 	return text.trim().split(/\s+/).filter((word) => word.length > 0).length;
 };
+
+export interface PresentationSlideOption {
+	path: string;
+	label: string;
+}
 
 interface ChatInputProps {
 	// Form state
@@ -49,6 +63,11 @@ interface ChatInputProps {
 	// Refs
 	chatFormRef: RefObject<HTMLFormElement | null>;
 	imageInputRef: RefObject<HTMLInputElement | null>;
+
+	/** When set, show a slide focus dropdown (presentation projects). */
+	presentationSlides?: PresentationSlideOption[];
+	focusedPresentationSlidePath?: string | null;
+	onFocusedPresentationSlideChange?: (path: string | null) => void;
 }
 
 export function ChatInput({
@@ -71,6 +90,9 @@ export function ChatInput({
 	onMessageIntentChange,
 	chatFormRef,
 	imageInputRef,
+	presentationSlides,
+	focusedPresentationSlidePath = null,
+	onFocusedPresentationSlideChange,
 }: ChatInputProps) {
 	const handleTextChange = (newValue: string) => {
 		const newWordCount = countWords(newValue);
@@ -145,11 +167,56 @@ export function ChatInput({
 						/>
 					</div>
 				)}
+				{presentationSlides !== undefined && onFocusedPresentationSlideChange ? (
+					<div className="flex flex-wrap items-center gap-2 mb-2">
+						<Label
+							htmlFor="chat-presentation-slide"
+							className="text-xs text-text-tertiary shrink-0 flex items-center gap-1.5"
+						>
+							<Presentation className="size-3.5 text-accent shrink-0" aria-hidden />
+							Slide
+						</Label>
+						{presentationSlides.length === 0 ? (
+							<p
+								id="chat-presentation-slide"
+								className="text-xs text-text-tertiary/90 leading-snug flex-1 min-w-0"
+							>
+								No slides listed yet. They appear here from <span className="font-mono">manifest.json</span>{' '}
+								after generation starts.
+							</p>
+						) : (
+							<Select
+								value={focusedPresentationSlidePath ?? SLIDE_FOCUS_ALL}
+								onValueChange={(v) => {
+									onFocusedPresentationSlideChange(v === SLIDE_FOCUS_ALL ? null : v);
+								}}
+								disabled={isChatDisabled}
+							>
+								<SelectTrigger
+									id="chat-presentation-slide"
+									className="h-8 text-xs max-w-[min(100%,20rem)] flex-1 min-w-[8rem]"
+								>
+									<SelectValue placeholder="All slides" />
+								</SelectTrigger>
+								<SelectContent>
+									<SelectItem value={SLIDE_FOCUS_ALL}>All slides</SelectItem>
+									{presentationSlides.map((s) => (
+										<SelectItem key={s.path} value={s.path}>
+											{s.label}
+										</SelectItem>
+									))}
+								</SelectContent>
+							</Select>
+						)}
+					</div>
+				) : null}
 				<div className="flex flex-wrap items-center justify-between gap-2 mb-2">
 					<p className="text-xs text-text-tertiary">
 						{messageIntent === 'ask'
 							? 'Ask: chat only (no new codegen from this message).'
-							: 'Build: may start or continue implementation when the agent is idle.'}
+							: isGenerating || isGeneratingBlueprint || isRunning
+								? 'Auto: code changes may queue until the current step finishes.'
+								: 'Auto: the agent can run or resume code changes when ready.'}
 					</p>
 					<ToggleGroup
 						type="single"
@@ -159,7 +226,7 @@ export function ChatInput({
 								onMessageIntentChange(v);
 							}
 						}}
-						disabled={isChatDisabled}
+						disabled={isDebugging}
 						variant="outline"
 						size="sm"
 						className="shrink-0"
@@ -167,8 +234,8 @@ export function ChatInput({
 						<ToggleGroupItem value="ask" className="text-xs px-2.5 h-7" aria-label="Ask only">
 							Ask
 						</ToggleGroupItem>
-						<ToggleGroupItem value="implement" className="text-xs px-2.5 h-7" aria-label="Build or implement">
-							Build
+						<ToggleGroupItem value="implement" className="text-xs px-2.5 h-7" aria-label="Auto">
+							Auto
 						</ToggleGroupItem>
 					</ToggleGroup>
 				</div>

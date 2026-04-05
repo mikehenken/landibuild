@@ -1,7 +1,7 @@
 import { Presentation } from 'lucide-react';
 import { PreviewIframe } from '@/routes/chat/components/preview-iframe';
 import clsx from 'clsx';
-import { useState, useRef, useMemo, useCallback } from 'react';
+import { useState, useRef, useMemo, useCallback, useEffect } from 'react';
 import { HEADER_STYLES } from '@/routes/chat/components/view-header-styles';
 import {
 	usePresentationFiles,
@@ -64,6 +64,18 @@ export function PresentationPreview({
 		setGeneratingSlides,
 		setCurrentSlideIndex,
 	);
+
+	// Sync current slide index to the global window object so Chat can pick it up
+	useEffect(() => {
+		const currentSlide = slideFiles.find((s) => s.index === currentSlideIndex);
+		if (currentSlide) {
+			window.dispatchEvent(
+				new CustomEvent('presentation-slide-focused', {
+					detail: { path: currentSlide.filePath },
+				}),
+			);
+		}
+	}, [currentSlideIndex, slideFiles]);
 
 	const mainPreviewUrl = useMemo(() => {
 		if (!previewUrl) return '';

@@ -323,11 +323,6 @@ export async function getConfigurationForModel(
                     baseURL: env.CLOUDFLARE_AI_GATEWAY_URL,
                     apiKey: env.WORKERS_API_KEY,
                 };
-            case 'openrouter': 
-                return {
-                    baseURL: 'https://openrouter.ai/api/v1',
-                    apiKey: env.OPENROUTER_API_KEY,
-                };
             case 'google-ai-studio':
                 return {
                     baseURL: 'https://generativelanguage.googleapis.com/v1beta/openai/',
@@ -342,6 +337,12 @@ export async function getConfigurationForModel(
                 providerForcedOverride = modelConfig.provider as AIGatewayProviders;
                 break;
         }
+    }
+
+    // OpenRouter: route via Cloudflare AI Gateway (`.../openrouter/...`), not direct openrouter.ai.
+    // See https://developers.cloudflare.com/ai-gateway/usage/providers/openrouter/
+    if (modelConfig.provider === 'openrouter') {
+        providerForcedOverride = 'openrouter';
     }
 
     const gatewayOverride = runtimeOverrides?.aiGatewayOverride;
@@ -626,6 +627,10 @@ export async function infer<OutputSchema extends z.AnyZodObject>({
 
         // Remove [*.] from model name
         modelName = modelName.replace(/\[.*?\]/, '');
+        // Registry ids use `openrouter/<openrouter-slug>`; OpenRouter + AI Gateway OpenRouter routes expect `<openrouter-slug>` only (e.g. z-ai/glm-4.7).
+        if (modelName.startsWith('openrouter/')) {
+            modelName = modelName.slice('openrouter/'.length);
+        }
 
         const client = new OpenAI({ apiKey, baseURL: baseURL, defaultHeaders });
         const schemaObj =

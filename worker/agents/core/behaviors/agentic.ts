@@ -22,6 +22,7 @@ import { ConversationMessage, createMultiModalUserMessage, createUserMessage, Me
 import { AbortError } from 'worker/agents/inferutils/core';
 import { ImageAttachment, ProcessedImageAttachment } from 'worker/types/image-attachment';
 import { ImageType, uploadImage } from 'worker/utils/images';
+import { emitAgentUiEvent } from '../agentUiWire';
 
 interface AgenticOperations extends BaseCodingOperations {
     generateNextPhase: PhaseGenerationOperation;
@@ -262,13 +263,14 @@ export class AgenticCodingBehavior extends BaseCodingBehavior<AgenticState> impl
             projectName: this.state.projectName
         });
 
+        const aiConversationId = IdGenerator.generateConversationId();
+
         // Broadcast generation started
         this.broadcast(WebSocketMessageResponses.GENERATION_STARTED, {
             message: 'Starting project generation...',
             totalFiles: 1
         });
-
-        const aiConversationId = IdGenerator.generateConversationId();
+        emitAgentUiEvent(this, 'RUN_STARTED', { message: 'Starting project generation...' }, aiConversationId);
 
         try {
             const pendingUserInputs = this.fetchPendingUserRequests();
@@ -323,6 +325,13 @@ export class AgenticCodingBehavior extends BaseCodingBehavior<AgenticState> impl
                         isStreaming,
                         tool
                     });
+                    if (tool) {
+                        if (tool.status === 'start') {
+                            emitAgentUiEvent(this, 'TOOL_CALL_START', { toolName: tool.name, args: tool.args }, conversationId);
+                        } else if (tool.status === 'success' || tool.status === 'error') {
+                            emitAgentUiEvent(this, 'TOOL_CALL_END', { toolName: tool.name, status: tool.status, result: tool.result }, conversationId);
+                        }
+                    }
                 },
                 aiConversationId
             );
@@ -364,6 +373,7 @@ export class AgenticCodingBehavior extends BaseCodingBehavior<AgenticState> impl
                         conversationId: aiConversationId,
                         isStreaming: true
                     });
+                    emitAgentUiEvent(this, 'TEXT_MESSAGE_CONTENT', { text: chunk }, aiConversationId);
                 },
                 toolRenderer: toolCallRenderer,
                 onToolComplete,
@@ -373,17 +383,20 @@ export class AgenticCodingBehavior extends BaseCodingBehavior<AgenticState> impl
             // Execute operation
             const operation = new AgenticProjectBuilderOperation();
             await operation.execute(builderInputs, this.getOperationOptions());
+            emitAgentUiEvent(this, 'TEXT_MESSAGE_END', {}, aiConversationId);
 
             // Final checks after generation completes
             await this.compactifyIfNeeded();
 
             this.logger.info('Project generation completed');
+            emitAgentUiEvent(this, 'RUN_FINISHED', { message: 'Project generation completed' }, aiConversationId);
             
         } catch (error) {
             this.logger.error('Project generation failed', error);
             this.broadcast(WebSocketMessageResponses.ERROR, {
                 error: error instanceof Error ? error.message : 'Unknown error during generation'
             });
+            emitAgentUiEvent(this, 'RUN_ERROR', { error: error instanceof Error ? error.message : 'Unknown error' }, aiConversationId);
             throw error;
         } finally {
             this.generationPromise = null;

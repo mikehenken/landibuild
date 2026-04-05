@@ -13,6 +13,7 @@ import type { CapabilitiesData } from './types';
 import type { FeatureDefinition, PlatformCapabilities } from '../../../agents/core/features/types';
 import { DEFAULT_FEATURE_DEFINITIONS } from '../../../agents/core/features';
 import { createLogger } from '../../../logger';
+import { AGENT_WIRE_MANIFEST } from '../../../services/capabilities/agentWireManifest';
 
 const logger = createLogger('CapabilitiesController');
 
@@ -52,5 +53,20 @@ export class CapabilitiesController extends BaseController {
 		});
 
 		return CapabilitiesController.createSuccessResponse(capabilities);
+	}
+
+	/**
+	 * Agent tool profile manifest (orchestrator / MCP planning).
+	 *
+	 * @route GET /api/capabilities/agent-wire
+	 * @access Public
+	 */
+	static async getAgentWireManifest(
+		_request: Request,
+		_env: Env,
+		_ctx: ExecutionContext,
+		_context: RouteContext,
+	): Promise<ControllerResponse<ApiResponse<typeof AGENT_WIRE_MANIFEST>>> {
+		return CapabilitiesController.createSuccessResponse(AGENT_WIRE_MANIFEST);
 	}
 }

@@ -235,7 +235,7 @@ export function AppSidebar() {
 							<SidebarMenu>
 								<SidebarMenuItem>
 									<SidebarMenuButton
-										onClick={() => window.open('https://landi.build', '_blank')}
+										onClick={() => navigate('/?focus=landing-pages&from=websites')}
 										tooltip="Websites"
 										className="group hover:bg-[#2a2a2a]"
 									>
@@ -265,12 +265,21 @@ export function AppSidebar() {
 								</SidebarMenuItem>
 								<SidebarMenuItem>
 									<SidebarMenuButton
-										onClick={() => navigate('/?mode=research')}
-										tooltip="Deep Research"
-										className="group hover:bg-[#2a2a2a]"
+										type="button"
+										disabled
+										tooltip="Deep Research (coming soon)"
+										aria-disabled="true"
+										className="group flex items-center justify-between w-full opacity-45 cursor-not-allowed hover:bg-transparent"
 									>
-										<Search className="h-4 w-4 text-text-tertiary group-hover:text-text-primary" />
-										{!isCollapsed && <span className="text-[calc(1em+0.15em)]">Deep Research</span>}
+										<div className="flex items-center gap-2">
+											<Search className="h-4 w-4 text-text-tertiary" />
+											{!isCollapsed && <span className="text-[calc(1em+0.15em)]">Deep Research</span>}
+										</div>
+										{!isCollapsed && (
+											<span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-[#2a2a2a] text-text-tertiary border border-[#3a3a3a]">
+												Soon
+											</span>
+										)}
 									</SidebarMenuButton>
 								</SidebarMenuItem>
 								<SidebarMenuItem>
@@ -285,17 +294,19 @@ export function AppSidebar() {
 								</SidebarMenuItem>
 								<SidebarMenuItem>
 									<SidebarMenuButton
-										onClick={() => window.open('https://claw.landi.build', '_blank')}
-										tooltip="Landi Claw"
-										className="group hover:bg-[#2a2a2a] flex items-center justify-between w-full"
+										type="button"
+										disabled
+										tooltip="Landi Claw (coming soon)"
+										aria-disabled="true"
+										className="group flex items-center justify-between w-full opacity-45 cursor-not-allowed hover:bg-transparent"
 									>
 										<div className="flex items-center gap-2">
-											<TerminalSquare className="h-4 w-4 text-text-tertiary group-hover:text-text-primary" />
+											<TerminalSquare className="h-4 w-4 text-text-tertiary" />
 											{!isCollapsed && <span className="text-[calc(1em+0.15em)]">Landi Claw</span>}
 										</div>
 										{!isCollapsed && (
 											<span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-[#2a2a2a] text-text-tertiary border border-[#3a3a3a]">
-												Beta
+												Soon
 											</span>
 										)}
 									</SidebarMenuButton>

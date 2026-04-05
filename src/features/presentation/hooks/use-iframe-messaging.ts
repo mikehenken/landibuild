@@ -87,12 +87,13 @@ export function useIframeMessaging(
 
     const navigateToSlide = useCallback(
         (index: number) => {
+            setCurrentSlideIndex(index);
             sendMessageToIframe({
                 type: 'NAVIGATE_TO_SLIDE',
                 data: { index },
             });
         },
-        [sendMessageToIframe],
+        [sendMessageToIframe, setCurrentSlideIndex],
     );
 
     return { navigateToSlide };

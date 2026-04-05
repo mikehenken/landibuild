@@ -6,6 +6,43 @@ import type { CodeFixResult } from "../services/code-fixer";
 import { IssueReport } from "../agents/domain/values/IssueReport";
 import type { RateLimitExceededError } from 'shared/types/errors';
 
+/**
+ * Version of the optional agent-to-UI event mirror on the chat WebSocket.
+ * Increment when `agent_ui_event` payload shape or semantics change.
+ */
+export const AGENT_UI_PROTOCOL_VERSION = 1 as const;
+
+/** Names aligned with common agent-UI event vocabularies (e.g. AG-UI-style); extensible via CUSTOM. */
+export type AgentUiEventName =
+	| 'RUN_STARTED'
+	| 'RUN_FINISHED'
+	| 'RUN_ERROR'
+	| 'TEXT_MESSAGE_CONTENT'
+	| 'TEXT_MESSAGE_END'
+	| 'TOOL_CALL_START'
+	| 'TOOL_CALL_END'
+	| 'CUSTOM';
+
+/** Sent once per connection so clients know which wire formats this server speaks. */
+export type AgentProtocolInfoMessage = {
+	type: 'agent_protocol_info';
+	protocolVersion: number;
+	/** Labels for debugging and future negotiation; not a formal IANA registry */
+	wireFormats: readonly string[];
+};
+
+/**
+ * Parallel, versioned event stream for tooling and future AG-UI consumers.
+ * Legacy `conversation_response` remains the default driver for the in-app chat UI.
+ */
+export type AgentUiEventMessage = {
+	type: 'agent_ui_event';
+	protocolVersion: typeof AGENT_UI_PROTOCOL_VERSION;
+	eventName: AgentUiEventName;
+	runId?: string;
+	payload: Record<string, unknown>;
+};
+
 type ErrorMessage = {
     type: 'error';
     error: string;
@@ -347,6 +384,10 @@ type ConversationResponseMessage = {
 	enhancedRequest?: string;
 	pendingInputsCount?: number;
 	isStreaming?: boolean;
+	/** Raw ASR/stream text when different from display (e.g. voice); optional */
+	transcriptRaw?: string;
+	/** User-facing text; when set, UI should prefer this over `message` for display */
+	transcriptDisplay?: string;
 	tool?: {
 		name: string;
 		status: 'start' | 'success' | 'error';
@@ -578,6 +619,8 @@ export type VaultWebSocketMessage =
 export type WebSocketMessage =
 	| StateMessage
 	| AgentConnectedMessage
+	| AgentProtocolInfoMessage
+	| AgentUiEventMessage
 	| ModelCatalogRevisionMessage
 	| ArtifactPreviewMessage
 	| TemplateUpdatedMessage

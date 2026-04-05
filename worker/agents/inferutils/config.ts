@@ -5,6 +5,7 @@ import {
     AIModels,
     AllModels,
 } from "./config.types";
+import { OPENROUTER_FREE_AGENT_CONFIG } from './builtInModelConfigPresets';
 import { env } from 'cloudflare:workers';
 
 // Common configs - these are good defaults
@@ -115,124 +116,23 @@ const PLATFORM_AGENT_CONFIG: AgentConfig = {
 };
 
 //======================================================================================
-// Default Gemini-only config (most likely used in your deployment)
+// Default bundle when PLATFORM_MODEL_PROVIDERS is unset: OpenRouter free-tier (see built-in preset).
 //======================================================================================
-/* These are the default out-of-the box gemini-only models used when PLATFORM_MODEL_PROVIDERS is not set */
-const DEFAULT_AGENT_CONFIG: AgentConfig = {
-    ...COMMON_AGENT_CONFIGS,
-    templateSelection: {
-        name: AIModels.GEMINI_2_5_FLASH_LITE,
-        //name: AIModels.KIMI_2_5,
-        max_tokens: 2000,
-        fallbackModel: AIModels.GEMINI_2_5_FLASH,
-        //fallbackModel: AIModels.KIMI_2_5,
-        temperature: 0.6,
-    },
-    blueprint: {
-        name: AIModels.GEMINI_3_FLASH_PREVIEW,
-        //name: AIModels.KIMI_2_5,
-        reasoning_effort: 'high',
-        max_tokens: 64000,
-        fallbackModel: AIModels.GEMINI_2_5_PRO,
-        //fallbackModel: AIModels.KIMI_2_5,
-        temperature: 1,
-    },
-    projectSetup: {
-        name: AIModels.GEMINI_3_FLASH_PREVIEW,
-        //name: AIModels.KIMI_2_5,
-        ...SHARED_IMPLEMENTATION_CONFIG,
-    },
-    phaseGeneration: {
-        name: AIModels.GEMINI_3_FLASH_PREVIEW,
-        //name: AIModels.KIMI_2_5,
-        ...SHARED_IMPLEMENTATION_CONFIG,
-    },
-    firstPhaseImplementation: {
-        name: AIModels.GEMINI_3_FLASH_PREVIEW,
-        //name: AIModels.KIMI_2_5,
-        ...SHARED_IMPLEMENTATION_CONFIG,
-    },
-    phaseImplementation: {
-        name: AIModels.GEMINI_3_FLASH_PREVIEW,
-        //name: AIModels.KIMI_2_5,
-        ...SHARED_IMPLEMENTATION_CONFIG,
-    },
-    conversationalResponse: {
-        name: AIModels.GEMINI_2_5_FLASH,
-        //name: AIModels.KIMI_2_5,
-        reasoning_effort: 'low',
-        max_tokens: 4000,
-        temperature: 0,
-        fallbackModel: AIModels.GEMINI_2_5_PRO,
-        //fallbackModel: AIModels.KIMI_2_5,
-    },
-    deepDebugger: {
-        name: AIModels.GEMINI_3_FLASH_PREVIEW,
-        //name: AIModels.KIMI_2_5,
-        reasoning_effort: 'high',
-        max_tokens: 8000,
-        temperature: 1,
-        fallbackModel: AIModels.GEMINI_2_5_FLASH,
-        //fallbackModel: AIModels.KIMI_2_5,
-    },
-    fileRegeneration: {
-        name: AIModels.GEMINI_3_FLASH_PREVIEW,
-        //name: AIModels.KIMI_2_5,
-        reasoning_effort: 'low',
-        max_tokens: 32000,
-        temperature: 1,
-        fallbackModel: AIModels.GEMINI_2_5_FLASH,
-        //fallbackModel: AIModels.KIMI_2_5,
-    },
-    agenticProjectBuilder: {
-        name: AIModels.GEMINI_3_FLASH_PREVIEW,
-        //name: AIModels.KIMI_2_5,
-        reasoning_effort: 'high',
-        max_tokens: 8000,
-        temperature: 1,
-        fallbackModel: AIModels.GEMINI_2_5_FLASH,
-        //fallbackModel: AIModels.KIMI_2_5,
-    },
-};
+const DEFAULT_AGENT_CONFIG: AgentConfig = OPENROUTER_FREE_AGENT_CONFIG;
 
 export const AGENT_CONFIG: AgentConfig = env.PLATFORM_MODEL_PROVIDERS 
     ? PLATFORM_AGENT_CONFIG 
     : DEFAULT_AGENT_CONFIG;
 
 
-/** Workers AI models (gateway `workers-ai/@cf/...`). */
-/** Mid-size Scout added for lower-latency option vs 120B class. Nemotron 120B omitted for fixer latency (see registry for other uses). */
-const WORKERS_AI_CHOICE = new Set([
-	AIModels.KIMI_2_5,
-	AIModels.WORKERS_GPT_OSS_120B,
-	AIModels.WORKERS_GLM_4_7_FLASH,
-	AIModels.WORKERS_LLAMA_4_SCOUT,
-]);
-
 /**
- * Realtime + fast code fixers: prefer Workers AI, but allow platform defaults (Grok, Gemini),
- * {@link AIModels.DISABLED} for fast fixer-off, and typical fallbacks so saves match AGENT_CONFIG.
+ * Per-operation model allowlists for the settings UI and persisted overrides.
+ * Omit an {@link AgentActionKey} to allow the full accessible model list for that role.
+ *
+ * `fastCodeFixer` and `realtimeCodeFixer` have no entry here so users can pick any chat model
+ * (e.g. OpenRouter) rather than only the former Workers/Grok/Gemini subset.
  */
-const REALTIME_FAST_FIXER_ALLOWED = new Set([
-	...WORKERS_AI_CHOICE,
-	AIModels.DISABLED,
-	AIModels.GROK_4_1_FAST_NON_REASONING,
-	AIModels.GROK_4_1_FAST,
-	AIModels.GROK_CODE_FAST_1,
-	AIModels.GROK_4_FAST,
-	AIModels.GEMINI_2_5_FLASH,
-	AIModels.GEMINI_2_5_PRO,
-]);
-
 export const AGENT_CONSTRAINTS: Map<AgentActionKey, AgentConstraintConfig> = new Map([
-	['fastCodeFixer', {
-		allowedModels: REALTIME_FAST_FIXER_ALLOWED,
-		enabled: true,
-	}],
-	['realtimeCodeFixer', {
-		allowedModels: REALTIME_FAST_FIXER_ALLOWED,
-		enabled: true,
-	}],
 	['fileRegeneration', {
 		allowedModels: new Set(AllModels),
 		enabled: true,

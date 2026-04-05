@@ -30,6 +30,10 @@ import type{
 	ModelConfigDefaultsData,
 	ModelConfigDeleteData,
 	ByokProvidersData,
+	ModelConfigPresetsListData,
+	ModelConfigPresetMutationData,
+	ModelConfigPresetApplyData,
+	ModelConfigPresetDeleteData,
 	ModelConfigUpdate,
 	ModelProvidersListData,
 	ModelProviderCreateData,
@@ -748,6 +752,34 @@ class ApiClient {
 	 */
 	async getModelConfigs(): Promise<ApiResponse<ModelConfigsData>> {
 		return this.request<ModelConfigsData>('/api/model-configs');
+	}
+
+	async listModelConfigPresets(): Promise<ApiResponse<ModelConfigPresetsListData>> {
+		return this.request<ModelConfigPresetsListData>('/api/model-configs/presets');
+	}
+
+	async createModelConfigPresetFromCurrent(body: {
+		name: string;
+		description?: string | null;
+	}): Promise<ApiResponse<ModelConfigPresetMutationData>> {
+		return this.request<ModelConfigPresetMutationData>('/api/model-configs/presets/from-current', {
+			method: 'POST',
+			body: JSON.stringify(body),
+		});
+	}
+
+	async applyModelConfigPreset(presetId: string): Promise<ApiResponse<ModelConfigPresetApplyData>> {
+		return this.request<ModelConfigPresetApplyData>(
+			`/api/model-configs/presets/${encodeURIComponent(presetId)}/apply`,
+			{ method: 'POST' },
+		);
+	}
+
+	async deleteModelConfigPreset(presetId: string): Promise<ApiResponse<ModelConfigPresetDeleteData>> {
+		return this.request<ModelConfigPresetDeleteData>(
+			`/api/model-configs/presets/${encodeURIComponent(presetId)}`,
+			{ method: 'DELETE' },
+		);
 	}
 
 	/**
