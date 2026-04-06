@@ -246,6 +246,10 @@ export class AgenticCodingBehavior extends BaseCodingBehavior<AgenticState> impl
     async build(): Promise<void> {
         let attempt = 0;
         while (!this.isMVPGenerated() || this.state.pendingUserInputs.length > 0) {
+            if (this.infrastructure.isDisconnectedHaltActive()) {
+                this.logger.info('Agentic build loop stopped: no connected WebSocket clients');
+                break;
+            }
             await this.executeGeneration(attempt);
             attempt++;
         }
@@ -255,6 +259,10 @@ export class AgenticCodingBehavior extends BaseCodingBehavior<AgenticState> impl
      * Execute the project generation
      */
     private async executeGeneration(attempt: number): Promise<void> {
+        if (this.infrastructure.isDisconnectedHaltActive()) {
+            return;
+        }
+
         // Reset tool call counter for this build session
         this.toolCallCounter = 0;
 
@@ -392,6 +400,12 @@ export class AgenticCodingBehavior extends BaseCodingBehavior<AgenticState> impl
             emitAgentUiEvent(this, 'RUN_FINISHED', { message: 'Project generation completed' }, aiConversationId);
             
         } catch (error) {
+            if (this.infrastructure.isDisconnectedHaltActive()) {
+                this.logger.info('Agentic generation ended after client disconnect', {
+                    error: error instanceof Error ? error.message : String(error),
+                });
+                return;
+            }
             this.logger.error('Project generation failed', error);
             this.broadcast(WebSocketMessageResponses.ERROR, {
                 error: error instanceof Error ? error.message : 'Unknown error during generation'

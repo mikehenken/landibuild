@@ -341,8 +341,21 @@ export abstract class BaseCodingBehavior<TState extends BaseProjectState>
      * Reuses existing abort controller for nested operations
      */
     protected getInferenceContext(): InferenceContext {
+        if (this.infrastructure.isDisconnectedHaltActive()) {
+            const aborted = new AbortController();
+            aborted.abort();
+            return {
+                metadata: this.state.metadata,
+                enableFastSmartCodeFix: false,
+                enableRealtimeCodeFix: false,
+                abortSignal: aborted.signal,
+                userModelConfigs: this.getUserModelConfigs(),
+                runtimeOverrides: this.getRuntimeOverrides(),
+            };
+        }
+
         const controller = this.getOrCreateAbortController();
-        
+
         return {
             metadata: this.state.metadata,
             enableFastSmartCodeFix: false,  // TODO: Do we want to enable it via some config?
@@ -469,17 +482,20 @@ export abstract class BaseCodingBehavior<TState extends BaseProjectState>
                 this.broadcastError("Error during generation", error);
             }
         } finally {
-            // Clear abort controller after generation completes
             this.clearAbortController();
-            
-            const appService = new AppService(this.env);
-            await appService.updateApp(
-                this.getAgentId(),
-                {
-                    status: 'completed',
-                }
-            );
             this.generationPromise = null;
+
+            if (this.infrastructure.isDisconnectedHaltActive()) {
+                this.logger.info(
+                    'Skipping completion DB update / broadcast: all clients disconnected (generation halted)',
+                );
+                return;
+            }
+
+            const appService = new AppService(this.env);
+            await appService.updateApp(this.getAgentId(), {
+                status: 'completed',
+            });
             this.broadcast(WebSocketMessageResponses.GENERATION_COMPLETE, {
                 message: "Code generation and review process completed.",
                 instanceId: this.state.sandboxInstanceId,

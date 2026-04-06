@@ -6,6 +6,8 @@
 	"scripts": {
 		"setup": "tsx scripts/setup.ts",
 		"prepare": "husky",
+		"predev": "tsx scripts/ensure-local-d1-migrations.ts",
+		"db:ensure-local": "tsx scripts/ensure-local-d1-migrations.ts",
 		"dev": "cross-env DEV_MODE=true vite",
 		"build": "tsc -b --incremental && vite build",
 		"typecheck": "tsc -b --incremental --noEmit",
@@ -23,7 +25,7 @@
 		"test:bun:watch": "bun run vitest",
 		"db:generate": "drizzle-kit generate --config=drizzle.config.local.ts",
 		"db:generate:remote": "drizzle-kit generate --config=drizzle.config.remote.ts",
-		"db:migrate:local": "wrangler d1 migrations apply landibuild --local",
+		"db:migrate:local": "cross-env CI=true wrangler d1 migrations apply landibuild --local",
 		"db:migrate:remote": "CI=true wrangler d1 migrations apply landibuild--remote",
 		"db:studio": "drizzle-kit studio --config=drizzle.config.local.ts",
 		"db:studio:remote": "drizzle-kit studio --config=drizzle.config.remote.ts",

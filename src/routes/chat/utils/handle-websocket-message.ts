@@ -26,6 +26,34 @@ import type { FileType } from '@/api-types';
 import { toast } from 'sonner';
 import { createRepairingJSONParser } from '@/utils/ndjson-parser/ndjson-parser';
 
+/** WebSocket types that should not trigger console/debug-panel work (high volume or redundant). */
+const NOISY_WEBSOCKET_TYPES = new Set<string>([
+	'file_chunk_generated',
+	'cf_agent_state',
+	'agent_ui_event',
+]);
+
+function formatWebsocketDebugDetails(message: WebSocketMessage): string | undefined {
+	if (!import.meta.env.DEV) return undefined;
+	try {
+		const s = JSON.stringify(message);
+		const max = 24_000;
+		return s.length > max ? `${s.slice(0, max)}…[truncated]` : s;
+	} catch {
+		return '[unserializable message]';
+	}
+}
+
+function shouldLogWebSocketMessage(message: WebSocketMessage): boolean {
+	if (NOISY_WEBSOCKET_TYPES.has(message.type) || message.type.length > 50) {
+		return false;
+	}
+	if (message.type === 'conversation_response' && message.isStreaming) {
+		return false;
+	}
+	return true;
+}
+
 const isPhasicState = (state: AgentState): state is PhasicState => {
 	const record = state as unknown as Record<string, unknown>;
 	const behaviorType = record.behaviorType;
@@ -179,16 +207,20 @@ export function createWebSocketMessageHandler(deps: HandleMessageDeps) {
             setCanvasArtifact,
         } = deps;
 
-        // Log messages except for frequent ones
-        if (message.type !== 'file_chunk_generated' && message.type !== 'cf_agent_state' && message.type.length <= 50) {
-            logger.info('received message', message.type, message);
-            onDebugMessage?.('websocket', 
-                `${message.type}`,
-                JSON.stringify(message, null, 2),
-                'WebSocket',
-                message.type,
-                message
-            );
+        // Avoid heavy logging / debug-panel updates on the WebSocket handler stack (Chrome long-task warnings).
+        if (shouldLogWebSocketMessage(message)) {
+            if (onDebugMessage) {
+                const msgRef = message;
+                queueMicrotask(() => {
+                    onDebugMessage(
+                        'websocket',
+                        msgRef.type,
+                        formatWebsocketDebugDetails(msgRef),
+                        'WebSocket',
+                        msgRef.type,
+                    );
+                });
+            }
         }
         
         switch (message.type) {
@@ -198,9 +230,8 @@ export function createWebSocketMessageHandler(deps: HandleMessageDeps) {
             }
 
             case 'agent_ui_event': {
-                // Future: handle AG-UI events here. For now, we ignore them to avoid duplicating
-                // the legacy conversation_response stream that currently drives the UI.
-                logger.debug('Received agent UI event (ignored in legacy mode)', message.eventName);
+                // Legacy UI is driven by conversation_response; AG-UI events are ignored. Do not log
+                // (high volume; logging here dominated DevTools / main-thread time).
                 break;
             }
 

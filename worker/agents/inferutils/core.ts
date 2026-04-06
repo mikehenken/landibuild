@@ -211,13 +211,18 @@ function normalizeAiGatewayPathname(pathname: string): string {
 
 function buildGatewayPathname(cleanPathname: string, providerOverride?: AIGatewayProviders): string {
 	const base = normalizeAiGatewayPathname(cleanPathname);
+	// OpenRouter uses the provider-native gateway path, NOT /compat/openrouter (API 2019 unsupported).
+	// https://developers.cloudflare.com/ai-gateway/usage/providers/openrouter/
+	// baseURL = .../v1/{account}/{gateway}/openrouter — SDK appends /chat/completions.
+	if (providerOverride === 'openrouter') {
+		const root = base.replace(/\/compat$/, '').replace(/\/openrouter$/, '');
+		return `${root}/openrouter`;
+	}
+	const withCompat = base.endsWith('/compat') ? base : `${base}/compat`;
 	if (providerOverride) {
-		return `${base}/${providerOverride}`;
+		return `${withCompat}/${providerOverride}`;
 	}
-	if (base.endsWith('/compat')) {
-		return base;
-	}
-	return `${base}/compat`;
+	return withCompat;
 }
 
 function constructGatewayUrl(url: URL, providerOverride?: AIGatewayProviders): string {
@@ -257,10 +262,15 @@ export async function buildGatewayUrl(
         }
     }
     
-    // Build the url via bindings
+    // Build the url via bindings (match CLOUDFLARE_AI_GATEWAY_URL branch).
     const gateway = env.AI.gateway(env.CLOUDFLARE_AI_GATEWAY);
-    const baseUrl = providerOverride ? await gateway.getUrl(providerOverride) : `${await gateway.getUrl()}compat`;
-    return baseUrl;
+    const gatewayRoot = (await gateway.getUrl()).replace(/\/+$/, '').replace(/\/compat$/, '');
+    if (providerOverride === 'openrouter') {
+        return `${gatewayRoot}/openrouter`;
+    }
+    return providerOverride
+        ? `${gatewayRoot}/compat/${providerOverride}`
+        : `${gatewayRoot}/compat`;
 }
 
 function isValidApiKey(apiKey: string): boolean {

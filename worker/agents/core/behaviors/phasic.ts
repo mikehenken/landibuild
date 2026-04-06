@@ -284,6 +284,10 @@ export class PhasicCodingBehavior extends BaseCodingBehavior<PhasicState> implem
             let executionResults: PhaseExecutionResult;
             // State machine loop - continues until IDLE state
             while (currentDevState !== CurrentDevState.IDLE) {
+                if (this.infrastructure.isDisconnectedHaltActive()) {
+                    this.logger.info('Phasic state machine stopped: no connected WebSocket clients');
+                    break;
+                }
                 this.logger.info(`[generateAllFiles] Executing state: ${currentDevState}`);
                 switch (currentDevState) {
                     case CurrentDevState.PHASE_GENERATING:

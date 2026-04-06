@@ -18,6 +18,11 @@ export interface AgentInfrastructure<TState extends BaseProjectState> {
     readonly state: TState;
     setState(state: TState): void;
     getWebSockets(): WebSocket[];
+    /**
+     * When true, all realtime WebSocket clients have disconnected — stop LLM work to avoid burning tokens.
+     * Cleared when a client reconnects.
+     */
+    isDisconnectedHaltActive(): boolean;
     broadcast<T extends WebSocketMessageType>(
         type: T, 
         data?: WebSocketMessageData<T>

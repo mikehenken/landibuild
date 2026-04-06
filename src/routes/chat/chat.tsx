@@ -789,19 +789,33 @@ export default function Chat() {
 		return [completedPhases, totalPhases];
 	}, [phaseTimeline, blueprint]);
 
-	if (import.meta.env.DEV) {
-		logger.debug({
-			messages,
-			files,
-			blueprint,
+	// Stable fingerprints — `blueprint` / `projectStages` get new object references often (websocket, streaming).
+	const hasBlueprint = Boolean(blueprint);
+	const projectStagesFingerprint = useMemo(
+		() => projectStages.map((s) => `${s.id}:${s.status}`).join('|'),
+		[projectStages],
+	);
+
+	const codeStageStatusForLog = useMemo(() => {
+		const part = projectStagesFingerprint.split('|').find((p) => p.startsWith('code:'));
+		return part?.slice('code:'.length);
+	}, [projectStagesFingerprint]);
+
+	// Dev-only snapshot: dependencies are primitives / fingerprints so this does not run on every WS tick.
+	useEffect(() => {
+		if (!import.meta.env.DEV) return;
+		logger.debug('[chat snapshot]', {
+			messageCount: messages.length,
+			fileCount: files.length,
+			hasBlueprint,
 			query,
 			userQuery,
 			chatId,
-			previewUrl,
-			generatingFile,
-			activeFile,
-			bootstrapFiles,
-			streamedBootstrapFiles,
+			hasPreviewUrl: Boolean(previewUrl),
+			generatingPath: generatingFile?.filePath,
+			activePath: activeFile?.filePath,
+			bootstrapCount: bootstrapFiles.length,
+			streamedBootstrapCount: streamedBootstrapFiles.length,
 			isGeneratingBlueprint,
 			view,
 			totalFiles,
@@ -811,9 +825,31 @@ export default function Chat() {
 			progress,
 			total,
 			isRunning,
-			projectStages,
+			codeStage: codeStageStatusForLog,
 		});
-	}
+	}, [
+		messages.length,
+		files.length,
+		hasBlueprint,
+		query,
+		userQuery,
+		chatId,
+		previewUrl,
+		generatingFile?.filePath,
+		activeFile?.filePath,
+		bootstrapFiles.length,
+		streamedBootstrapFiles.length,
+		isGeneratingBlueprint,
+		view,
+		totalFiles,
+		generatingCount,
+		isBootstrapping,
+		activeFilePath,
+		progress,
+		total,
+		isRunning,
+		projectStagesFingerprint,
+	]);
 
 	return (
 		<div className="size-full flex flex-col min-h-0 text-text-primary bg-[#161817]">

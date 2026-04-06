@@ -2066,9 +2066,10 @@ class SetupManager {
 			console.log('✅ Database schema generated successfully');
 
 			console.log('\n🔄 Running local database migrations...');
-			execSync(`${this.packageManager} run db:migrate:local`, {
+			execSync(`${this.packageManager} run db:ensure-local`, {
 				stdio: 'inherit',
-				cwd: PROJECT_ROOT
+				cwd: PROJECT_ROOT,
+				env: { ...process.env, FORCE_D1_MIGRATE: '1' },
 			});
 			console.log('✅ Local database migrations completed successfully');
 

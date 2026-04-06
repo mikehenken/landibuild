@@ -245,10 +245,29 @@ export function handleWebSocketMessage(
     }
 }
 
+function countActiveViewerSockets(agent: CodeGeneratorAgent): number {
+    return agent.getWebSockets().filter(
+        (ws) => ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING,
+    ).length;
+}
+
 export function handleWebSocketClose(agent: CodeGeneratorAgent, connection: Connection): void {
     logger.info(`WebSocket connection closed: ${connection.id}`);
     // Clear vault session on disconnect for security
     agent.handleVaultLocked();
+
+    const activeRemaining = countActiveViewerSockets(agent);
+    if (activeRemaining > 0) {
+        logger.info('Other clients still connected; leaving generation state unchanged', {
+            activeRemaining,
+        });
+        return;
+    }
+
+    logger.info(
+        'Last WebSocket client disconnected; scheduling idle token guard (reconnect clears it; same intent preserved)',
+    );
+    agent.scheduleDisconnectTokenGuardIfNoViewers();
 }
 
 export function broadcastToConnections<T extends WebSocketMessageType>(

@@ -165,8 +165,24 @@ export function useChat({
 
 	const updateStage = useCallback(
 		(stageId: ProjectStage['id'], data: Partial<Omit<ProjectStage, 'id'>>) => {
-			logger.debug('updateStage', { stageId, ...data });
-			setProjectStages(prev => updateStageHelper(prev, stageId, data));
+			setProjectStages((prev) => {
+				const stage = prev.find((s) => s.id === stageId);
+				if (!stage) {
+					return updateStageHelper(prev, stageId, data);
+				}
+				const merged = { ...stage, ...data };
+				const unchanged =
+					merged.status === stage.status &&
+					merged.title === stage.title &&
+					merged.metadata === stage.metadata;
+				if (unchanged) {
+					return prev;
+				}
+				if (import.meta.env.DEV) {
+					logger.debug('updateStage', { stageId, ...data });
+				}
+				return updateStageHelper(prev, stageId, data);
+			});
 		},
 		[],
 	);
