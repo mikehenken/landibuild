@@ -86,6 +86,30 @@ export function isOriginAllowed(env: Env, origin: string): boolean {
 }
 
 /**
+ * Origins for Supabase Auth REST, PKCE token exchange, JWKS, and Realtime (wss).
+ * Required in CSP connect-src; COEP alone can also block cross-origin fetch without CORP.
+ */
+function getSupabaseConnectSrcEntries(env: Env): string[] {
+    const raw = env.SUPABASE_URL?.trim();
+    if (!raw) {
+        return [];
+    }
+    try {
+        const u = new URL(raw);
+        if (u.protocol !== 'https:' && u.protocol !== 'http:') {
+            return [];
+        }
+        const httpOrigin = `${u.protocol}//${u.host}`;
+        if (u.protocol === 'https:') {
+            return [httpOrigin, `wss://${u.host}`];
+        }
+        return [httpOrigin, `ws://${u.host}`];
+    } catch {
+        return [];
+    }
+}
+
+/**
  * CORS Configuration
  * Strict origin validation with environment-aware settings
  */
@@ -204,6 +228,7 @@ export function getSecureHeadersConfig(env: Env): SecureHeadersConfig {
                 "ws://localhost:*",
                 "wss://localhost:*",
                 `wss://${env.CUSTOM_DOMAIN || '*'}`,
+                ...getSupabaseConnectSrcEntries(env),
                 // API endpoints
                 "https://api.github.com",
                 "https://api.cloudflare.com"
@@ -236,10 +261,11 @@ export function getSecureHeadersConfig(env: Env): SecureHeadersConfig {
         // Referrer Policy - Privacy-focused
         referrerPolicy: 'strict-origin-when-cross-origin',
         
-        // Cross-Origin policies
-        crossOriginEmbedderPolicy: 'require-corp',
+        // Cross-Origin policies: avoid require-corp / strict COOP so Supabase OAuth (PKCE)
+        // and other third-party fetch/CORS APIs are not blocked (many omit CORP).
+        crossOriginEmbedderPolicy: false,
         crossOriginResourcePolicy: 'same-origin',
-        crossOriginOpenerPolicy: 'same-origin',
+        crossOriginOpenerPolicy: false,
         
         // Origin Agent Cluster
         originAgentCluster: '?1',

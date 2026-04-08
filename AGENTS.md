@@ -5,6 +5,10 @@ Primary landi.build codebase is in ~/Projects/landi/landing-editor
 The rest live in ~/Projects/landi/landi-docs, ~/Projects/landi/landi-ui, ~/Projects/landi/landi-infra, ~/Projects/landi/landi-ai-orchestrator
 
 
+## Deployment
+- **Production (this fork):** Cloudflare is **connected to the GitHub repository** (e.g. Workers Builds). Pushing/merging to the configured branch deploys the Worker; there is typically **no** deploy workflow under `.github/workflows/` for that path.
+- **Manual / scripted:** `bun run deploy` uses `scripts/deploy.ts` and `.prod.vars` (see `README.md`). Prefer the Git-linked pipeline unless you are intentionally deploying locally or from CI that mirrors it.
+
 ## Build/Test/Lint Commands
 - **Build:** `npm run build` (tsc + vite)
 - **Typecheck:** `npm run typecheck`

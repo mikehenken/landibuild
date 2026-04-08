@@ -38,11 +38,8 @@ export class AuthController extends BaseController {
     static isSupabaseAuthEnabled(env: Env): boolean {
         const flag = env.USE_SUPABASE_AUTH;
         const on = flag === 'true' || flag === '1';
-        return (
-            on &&
-            !!env.SUPABASE_JWT_SECRET?.trim() &&
-            !!env.SUPABASE_URL?.trim()
-        );
+        // SUPABASE_URL only: access tokens may be signed with asymmetric keys (JWKS), not HS256 + JWT secret.
+        return on && !!env.SUPABASE_URL?.trim();
     }
 
     static hasOAuthProviders(env: Env): boolean {

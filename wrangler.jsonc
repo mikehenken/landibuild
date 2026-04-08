@@ -59,16 +59,17 @@
 	"containers": [
 		{
 			"class_name": "UserAppSandboxService",
-			"image": "./SandboxDockerfile",
-            // "image": "registry.cloudflare.com/vibesdk-production-userappsandboxservice:cfe197fc",
-            // Altering max_instances value will have no effect. Please use the MAX_SANDBOX_INSTANCES var instead.
-			"max_instances": 1400,
+			// Last good prod image on this account (avoids Docker on Windows). For custom sandbox, use ./SandboxDockerfile with Docker.
+			"image": "registry.cloudflare.com/dd84ae290b8a011725410e223c0ea928/landibuild-userappsandboxservice:0493e5b4",
+			// "image": "./SandboxDockerfile",
+            // Must stay within account vCPU quota (remote app may cap lower than this field).
+			"max_instances": 12,
             // ATTENTION: Altering instance_type value will have no effect. Please use the SANDBOX_INSTANCE_TYPE var instead.
-            "instance_type": {
-                "vcpu": 4,
-                "memory_mib": 8192,
-                "disk_mb": 10240
-            },
+			"instance_type": {
+				"vcpu": 2,
+				"memory_mib": 8192,
+				"disk_mb": 16000
+			},
             "rollout_step_percentage": 100
 		}
 	],
@@ -140,17 +141,8 @@
             "tag": "v3"
         }
 	],
-	"routes": [
-        {
-            "pattern": "build.cloudflare.dev",
-            "custom_domain": true
-        },
-        {
-            "pattern": "*build-preview.cloudflare.dev/*",
-            "custom_domain": false,
-            "zone_id": "db01fac4261b2604aacad8410443a3e2"
-        }
-    ],
+	// Empty while Cloudflare routes API returns 500 for the patterns below; re-add after deploy or attach in dashboard.
+	"routes": [],
 	"vars": {
         "TEMPLATES_REPOSITORY": "https://github.com/cloudflare/vibesdk-templates",
         "ALLOWED_EMAIL": "mikehenken@gmail.com",

@@ -298,6 +298,7 @@ LANDiBUILD generates apps in intelligent phases:
 
 - The "Deploy to Cloudflare" button provisions the worker and also creates a GitHub repository in your account. Clone that repository to work locally.
 - Pushes to the `main` branch trigger automatic deployments; CI/CD is already wired up for you.
+- **Git + Cloudflare only:** Many installations (including Landi production) connect the repo in the **Cloudflare dashboard** so pushes deploy via **Workers Builds** (or similar). That path does not require a `.github/workflows` deploy job in this repository.
 - For a manual deployment, copy `.dev.vars.example` to `.prod.vars`, fill in production-only secrets, and run `bun run deploy`. The deploy script reads from `.prod.vars`.
 
 DNS updates made during setup, including the wildcard CNAME record described above, can take a while to propagate. Wait until the record resolves before testing preview apps.

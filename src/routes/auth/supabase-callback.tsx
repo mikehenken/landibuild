@@ -25,6 +25,17 @@ export default function SupabaseAuthCallback() {
 				return;
 			}
 
+			// Ensure PKCE / URL session detection finished (constructor also calls initialize; this awaits the same promise).
+			const { error: initError } = await supabase.auth.initialize();
+			if (initError) {
+				setIsError(true);
+				setMessage(
+					initError.message ??
+						'Could not complete sign-in from redirect. Use the same site URL you started from (www vs non-www).',
+				);
+				return;
+			}
+
 			const { data, error: sessionError } = await supabase.auth.getSession();
 			const accessToken = data.session?.access_token;
 

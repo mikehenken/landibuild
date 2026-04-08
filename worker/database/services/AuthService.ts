@@ -27,7 +27,12 @@ import { createLogger } from '../../logger';
 import { validateEmail, validatePassword } from '../../utils/validationUtils';
 import { extractRequestMetadata } from '../../utils/authUtils';
 import { BaseService } from './BaseService';
-import { jwtVerify } from 'jose';
+import {
+    createRemoteJWKSet,
+    decodeProtectedHeader,
+    jwtVerify,
+    type JWTPayload,
+} from 'jose';
 
 const logger = createLogger('AuthService');
 
@@ -808,7 +813,7 @@ export class AuthService extends BaseService {
         try {
             const rawUrl = this.env.SUPABASE_URL?.trim();
             const jwtSecret = this.env.SUPABASE_JWT_SECRET?.trim();
-            if (!rawUrl || !jwtSecret) {
+            if (!rawUrl) {
                 throw new SecurityError(
                     SecurityErrorType.INVALID_INPUT,
                     'Supabase authentication is not configured',
@@ -819,14 +824,45 @@ export class AuthService extends BaseService {
             const baseUrl = rawUrl.replace(/\/$/, '');
             const issuer = `${baseUrl}/auth/v1`;
 
-            const { payload } = await jwtVerify(accessToken, new TextEncoder().encode(jwtSecret), {
-                algorithms: ['HS256'],
-                issuer,
-                audience: 'authenticated',
-            });
+            const header = decodeProtectedHeader(accessToken);
+            const alg = header.alg;
+            let payload: JWTPayload;
+
+            if (alg === 'HS256') {
+                if (!jwtSecret) {
+                    throw new SecurityError(
+                        SecurityErrorType.INVALID_INPUT,
+                        'Supabase authentication is not configured',
+                        503,
+                    );
+                }
+                ({ payload } = await jwtVerify(accessToken, new TextEncoder().encode(jwtSecret), {
+                    algorithms: ['HS256'],
+                    issuer,
+                    audience: 'authenticated',
+                    clockTolerance: 30,
+                }));
+            } else if (alg === 'none' || alg === undefined) {
+                throw new SecurityError(
+                    SecurityErrorType.UNAUTHORIZED,
+                    'Invalid Supabase token',
+                    401,
+                );
+            } else {
+                const jwksUrl = new URL('.well-known/jwks.json', `${issuer}/`);
+                const JWKS = createRemoteJWKSet(jwksUrl);
+                ({ payload } = await jwtVerify(accessToken, JWKS, {
+                    issuer,
+                    audience: 'authenticated',
+                    clockTolerance: 30,
+                }));
+            }
 
             const sub = typeof payload.sub === 'string' ? payload.sub : null;
-            const email = typeof payload.email === 'string' ? payload.email : null;
+            const meta = payload.user_metadata as Record<string, unknown> | undefined;
+            const email =
+                (typeof payload.email === 'string' ? payload.email : null) ??
+                (typeof meta?.email === 'string' ? meta.email : null);
             if (!sub || !email) {
                 throw new SecurityError(
                     SecurityErrorType.UNAUTHORIZED,
@@ -843,7 +879,6 @@ export class AuthService extends BaseService {
                 );
             }
 
-            const meta = payload.user_metadata as Record<string, unknown> | undefined;
             const fullName = typeof meta?.full_name === 'string' ? meta.full_name : undefined;
             const avatarUrl = typeof meta?.avatar_url === 'string' ? meta.avatar_url : undefined;
             const nameFallback = typeof payload.name === 'string' ? payload.name : undefined;

@@ -10,12 +10,12 @@ describe('AuthController.isSupabaseAuthEnabled', () => {
 		expect(AuthController.isSupabaseAuthEnabled(makeEnv({}))).toBe(false);
 	});
 
-	it('returns false when flag is "true" but SUPABASE_JWT_SECRET is missing', () => {
+	it('returns true when flag is "true" and SUPABASE_URL is set (JWKS signing may omit JWT secret)', () => {
 		expect(
 			AuthController.isSupabaseAuthEnabled(
 				makeEnv({ USE_SUPABASE_AUTH: 'true', SUPABASE_URL: 'https://example.supabase.co' }),
 			),
-		).toBe(false);
+		).toBe(true);
 	});
 
 	it('returns false when flag is "true" but SUPABASE_URL is missing', () => {
@@ -89,7 +89,6 @@ describe('AuthController.hasOAuthProviders', () => {
 			AuthController.hasOAuthProviders(
 				makeEnv({
 					USE_SUPABASE_AUTH: 'true',
-					SUPABASE_JWT_SECRET: 'jwt-secret',
 					SUPABASE_URL: 'https://example.supabase.co',
 				}),
 			),
