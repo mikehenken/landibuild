@@ -184,7 +184,10 @@ export function createScratchTemplateDetails(): TemplateDetails {
         deps: {},
         projectType: 'general',
         frameworks: [],
-        importantFiles: [],
+        // Required: getAllRelevantFiles() only exposes template paths that match importantFiles.
+        // Empty importantFiles made virtual_filesystem("list") always return [] for scratch,
+        // causing the agent to loop on list instead of calling generate_blueprint / generate_files.
+        importantFiles: ['package.json', 'vite.config.ts', 'wrangler.jsonc'],
         dontTouchFiles: ['wrangler.jsonc'],
         redactedFiles: [],
         disabled: false,

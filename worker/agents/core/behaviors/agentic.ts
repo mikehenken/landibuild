@@ -123,6 +123,35 @@ export class AgenticCodingBehavior extends BaseCodingBehavior<AgenticState> impl
             
             this.logger.info('Committed customized template files to git');
             this.deployToSandbox();
+        } else if (templateInfo && templateInfo.templateDetails.name === 'scratch') {
+            // Scratch baseline was previously not written to git, so listFiles / virtual FS stayed empty
+            // while prompts assumed baseline files exist. Persist full baseline + customized config.
+            const customizedFiles = customizeTemplateFiles(
+                templateInfo.templateDetails.allFiles,
+                {
+                    projectName,
+                    commandsHistory: []
+                }
+            );
+            const mergedAll: Record<string, string> = {
+                ...templateInfo.templateDetails.allFiles,
+                ...customizedFiles
+            };
+            const filesToSave = Object.entries(mergedAll).map(([filePath, fileContents]) => ({
+                filePath,
+                fileContents,
+                filePurpose: 'Scratch baseline / project configuration'
+            }));
+            this.logger.info('Saving scratch baseline to virtual filesystem', {
+                files: Object.keys(mergedAll)
+            });
+            await this.fileManager.saveGeneratedFiles(
+                filesToSave,
+                'Initialize scratch baseline files',
+                true
+            );
+            this.logger.info('Committed scratch baseline files to git');
+            this.deployToSandbox();
         }
         this.logger.info(`Agent ${this.getAgentId()} session: ${this.state.sessionId} initialized successfully`);
         return this.state;
