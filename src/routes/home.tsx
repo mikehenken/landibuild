@@ -116,11 +116,17 @@ export default function Home() {
 	});
 
 
-	const placeholderPhrases = useMemo(() => [
-		"todo list app",
-		"F1 fantasy game",
-		"personal finance tracker"
-	], []);
+	const placeholderPhrases = useMemo(
+		() => [
+			'landing page for a local bakery',
+			'team standup notes app with markdown',
+			'customer support ticket dashboard',
+			'recipe box with tags and search',
+			'habit tracker with streaks and reminders',
+			'internal wiki for onboarding new hires',
+		],
+		[],
+	);
 	const [currentPlaceholderPhraseIndex, setCurrentPlaceholderPhraseIndex] = useState(0);
 	const [currentPlaceholderText, setCurrentPlaceholderText] = useState("");
 	const [isPlaceholderTyping, setIsPlaceholderTyping] = useState(true);

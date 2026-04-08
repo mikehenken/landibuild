@@ -3,7 +3,11 @@ import { StructuredLogger } from '../../../logger';
 import { ICodingAgent } from 'worker/agents/services/interfaces/ICodingAgent';
 
 export type VirtualFilesystemResult =
-	| { files: Array<{ path: string; purpose?: string; size: number }>; error?: never }
+	| {
+			files: Array<{ path: string; purpose?: string; size: number }>;
+			guidance?: string;
+			error?: never;
+	  }
 	| { files: Array<{ path: string; content: string }>; error?: never }
 	| { error: string; files?: never };
 
@@ -32,8 +36,16 @@ IMPORTANT: This reads from the VIRTUAL filesystem, NOT the sandbox. Files appear
 						size: file.fileContents.length
 					}));
 
+					if (fileList.length === 0) {
+						return {
+							files: fileList,
+							guidance:
+								'Workspace is empty. Do not call virtual_filesystem("list") again with the same arguments. Next: init_suitable_template() for interactive/app projects, or generate_blueprint / generate_files for your workflow. List again only after files should exist.',
+						};
+					}
+
 					return {
-						files: fileList
+						files: fileList,
 					};
 				} else if (command === 'read') {
 					if (!paths || paths.length === 0) {

@@ -13,7 +13,6 @@ import {
 	MonitorPlay,
 	TerminalSquare,
 	Clock,
-	Smartphone,
 } from 'lucide-react';
 import './sidebar-overrides.css';
 import { useRecentApps } from '@/hooks/use-apps';
@@ -347,21 +346,6 @@ export function AppSidebar() {
 								)}
 							</SidebarMenu>
 						</SidebarGroupContent>
-					</SidebarGroup>
-
-					<SidebarGroup className="mt-auto pt-4">
-						<SidebarMenu>
-							<SidebarMenuItem>
-								<SidebarMenuButton
-									onClick={() => window.open('https://landi.build/mobile', '_blank')}
-									tooltip="Mobile App"
-									className="group hover:bg-[#2a2a2a]"
-								>
-									<Smartphone className="h-4 w-4 text-text-tertiary group-hover:text-text-primary" />
-									{!isCollapsed && <span className="text-[calc(1em+0.15em)]">Mobile App</span>}
-								</SidebarMenuButton>
-							</SidebarMenuItem>
-						</SidebarMenu>
 					</SidebarGroup>
 				</ScrollArea>
 			</SidebarContent>

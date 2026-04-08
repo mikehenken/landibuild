@@ -22,15 +22,31 @@ export type LoopDetectionState = {
  *
  * Detection Logic:
  * - Tracks tool calls within a 2-minute sliding window
- * - Flags repetition when 2+ identical calls (same tool + same args) occur
+ * - Flags repetition on the 3rd+ identical invocation (same tool + same args) within the window
  */
+export type ToolRepetitionResult = {
+	repeated: boolean;
+	/** 1-based count including this call; set when repeated is true */
+	identicalInvocationNumber?: number;
+};
+
+function englishOrdinal(n: number): string {
+	const abs = Math.floor(Math.abs(n));
+	const j = abs % 10;
+	const k = abs % 100;
+	if (j === 1 && k !== 11) return `${abs}st`;
+	if (j === 2 && k !== 12) return `${abs}nd`;
+	if (j === 3 && k !== 13) return `${abs}rd`;
+	return `${abs}th`;
+}
+
 export class LoopDetector {
 	private state: LoopDetectionState = {
 		recentCalls: [],
 		repetitionWarnings: 0,
 	};
 
-	detectRepetition(toolName: string, args: Record<string, unknown>): boolean {
+	detectRepetition(toolName: string, args: Record<string, unknown>): ToolRepetitionResult {
 		const argsStr = this.safeStringify(args);
 		const now = Date.now();
 		const WINDOW_MS = 2 * 60 * 1000;
@@ -53,7 +69,12 @@ export class LoopDetector {
 			this.state.recentCalls = this.state.recentCalls.slice(-1000);
 		}
 
-		return matchingCalls.length >= 2;
+		const priorIdentical = matchingCalls.length;
+		const repeated = priorIdentical >= 2;
+		return {
+			repeated,
+			identicalInvocationNumber: repeated ? priorIdentical + 1 : undefined,
+		};
 	}
 
 	/**
@@ -220,15 +241,17 @@ export class LoopDetector {
 	 * Generate contextual warning message for injection into conversation history
 	 *
 	 * @param toolName - Name of the tool that's being repeated
+	 * @param identicalInvocationNumber - This invocation's position among identical calls in the window (e.g. 3 = third time)
 	 * @returns Message object to inject into conversation
 	 */
-	generateWarning(toolName: string): Message {
+	generateWarning(toolName: string, identicalInvocationNumber: number): Message {
 		this.state.repetitionWarnings++;
 
+		const ord = englishOrdinal(identicalInvocationNumber);
 		const warningMessage = `
 [!ALERT] CRITICAL: POSSIBLE REPETITION DETECTED
 
-You just attempted to execute "${toolName}" with identical arguments for the ${this.state.repetitionWarnings}th time.
+You just attempted to execute "${toolName}" with identical arguments for the ${ord} time in a short window.
 
 This indicates you may be stuck in a loop. Please take one of these actions:
 

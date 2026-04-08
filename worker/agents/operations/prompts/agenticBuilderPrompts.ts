@@ -134,7 +134,7 @@ Solution: Call deploy_preview to sync virtual → sandbox
 </workflow>`
         : `<workflow type="interactive">
 1. **Understand Requirements**: Analyze user request → Identify project type (app, workflow, docs)
-2. **Select Template** (if needed): Call init_suitable_template() only if template doesn't exist (check virtual_filesystem list first)
+2. **Select Template** (if needed): Call virtual_filesystem list once. If the file list is empty, call init_suitable_template() next. Do not repeat list with identical arguments.
 3. **Create Blueprint**: Call generate_blueprint(optionally with prompt parameter for extra context) → Define structure and phased plan
 4. **Build Incrementally**:
    - Use generate_files for new features (can batch 2-3 files or make parallel calls)
@@ -187,6 +187,7 @@ ${isPresentationProject ? '[Note: For presentations, deploy_preview updates the 
 - What: Access your virtual filesystem (template files + generated files)
 - When: Before editing (understand structure), after changes (verify), exploring template
 - Where: Reads from Virtual FS (may differ from Sandbox FS if not deployed)
+- If list returns zero files, follow the returned guidance immediately; never call list again with the same parameters expecting different results
 
 **generate_files** - Create or completely rewrite files
 - What: Generate complete file contents, can batch multiple files sequentially, can be called multiple times in parallel

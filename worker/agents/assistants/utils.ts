@@ -25,9 +25,13 @@ export function wrapToolsWithLoopDetection(
 				let loopWarning: string | null = null;
 				if (args && typeof args === 'object' && !Array.isArray(args)) {
 					const argsRecord = args as Record<string, unknown>;
-					if (loopDetector.detectRepetition(tool.name, argsRecord)) {
+					const detection = loopDetector.detectRepetition(tool.name, argsRecord);
+					if (detection.repeated && detection.identicalInvocationNumber !== undefined) {
 						logger.warn(`Loop detected: ${tool.name}`);
-						const warningMessage = loopDetector.generateWarning(tool.name);
+						const warningMessage = loopDetector.generateWarning(
+							tool.name,
+							detection.identicalInvocationNumber
+						);
 						loopWarning = '\n\n' + warningMessage.content;
 					}
 				}
