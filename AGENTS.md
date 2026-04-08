@@ -8,6 +8,7 @@ The rest live in ~/Projects/landi/landi-docs, ~/Projects/landi/landi-ui, ~/Proje
 ## Deployment
 - **Production (this fork):** Cloudflare is **connected to the GitHub repository** (e.g. Workers Builds). Pushing/merging to the configured branch deploys the Worker; there is typically **no** deploy workflow under `.github/workflows/` for that path.
 - **Manual / scripted:** `bun run deploy` uses `scripts/deploy.ts` and `.prod.vars` (see `README.md`). Prefer the Git-linked pipeline unless you are intentionally deploying locally or from CI that mirrors it.
+- **Supabase auth in production:** `SUPABASE_JWT_SECRET` must exist as a **Worker secret** in the Cloudflare dashboard (`wrangler secret put SUPABASE_JWT_SECRET`), not only in `.dev.vars` locally. Missing or wrong secret → bridge returns 401 while local still works.
 
 ## Build/Test/Lint Commands
 - **Build:** `npm run build` (tsc + vite)

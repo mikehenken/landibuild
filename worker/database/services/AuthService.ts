@@ -29,7 +29,9 @@ import { extractRequestMetadata } from '../../utils/authUtils';
 import { BaseService } from './BaseService';
 import {
     createRemoteJWKSet,
+    decodeJwt,
     decodeProtectedHeader,
+    errors,
     jwtVerify,
     type JWTPayload,
 } from 'jose';
@@ -807,7 +809,8 @@ export class AuthService extends BaseService {
     }
 
     /**
-     * Verify Supabase access JWT (HS256) and create a Worker session (D1 + app JWT cookies).
+     * Verify Supabase access JWT (HS256 or JWKS) and create a Worker session (D1 + app JWT cookies).
+     * Uses the JWT `iss` claim (must match SUPABASE_URL origin) so prod/local match Supabase exactly.
      */
     async exchangeSupabaseAccessToken(accessToken: string, request: Request): Promise<AuthResult> {
         try {
@@ -822,26 +825,96 @@ export class AuthService extends BaseService {
             }
 
             const baseUrl = rawUrl.replace(/\/$/, '');
-            const issuer = `${baseUrl}/auth/v1`;
+            let expectedOrigin: string;
+            try {
+                expectedOrigin = new URL(baseUrl).origin;
+            } catch {
+                throw new SecurityError(
+                    SecurityErrorType.INVALID_INPUT,
+                    'Supabase authentication is not configured',
+                    503,
+                );
+            }
 
             const header = decodeProtectedHeader(accessToken);
             const alg = header.alg;
+
+            let unverified: JWTPayload;
+            try {
+                unverified = decodeJwt(accessToken);
+            } catch {
+                throw new SecurityError(
+                    SecurityErrorType.UNAUTHORIZED,
+                    'Invalid Supabase token',
+                    401,
+                );
+            }
+
+            const issRaw = unverified.iss;
+            if (typeof issRaw !== 'string' || !issRaw.trim()) {
+                throw new SecurityError(
+                    SecurityErrorType.UNAUTHORIZED,
+                    'Invalid Supabase token',
+                    401,
+                );
+            }
+
+            const issuer = issRaw.trim();
+            let issOrigin: string;
+            try {
+                issOrigin = new URL(issuer).origin;
+            } catch {
+                throw new SecurityError(
+                    SecurityErrorType.UNAUTHORIZED,
+                    'Invalid Supabase token',
+                    401,
+                );
+            }
+
+            if (issOrigin !== expectedOrigin) {
+                logger.warn('Supabase bridge issuer origin mismatch', {
+                    issOrigin,
+                    expectedOrigin,
+                });
+                throw new SecurityError(
+                    SecurityErrorType.UNAUTHORIZED,
+                    'Supabase project mismatch — Worker SUPABASE_URL must match the JWT issuer project',
+                    401,
+                );
+            }
+
+            const jwtVerifyOpts = {
+                issuer,
+                audience: 'authenticated',
+                clockTolerance: 30,
+            } as const;
+
             let payload: JWTPayload;
 
             if (alg === 'HS256') {
                 if (!jwtSecret) {
                     throw new SecurityError(
                         SecurityErrorType.INVALID_INPUT,
-                        'Supabase authentication is not configured',
+                        'SUPABASE_JWT_SECRET is not set on the Worker. For HS256 tokens run: npx wrangler secret put SUPABASE_JWT_SECRET',
                         503,
                     );
                 }
-                ({ payload } = await jwtVerify(accessToken, new TextEncoder().encode(jwtSecret), {
-                    algorithms: ['HS256'],
-                    issuer,
-                    audience: 'authenticated',
-                    clockTolerance: 30,
-                }));
+                try {
+                    ({ payload } = await jwtVerify(accessToken, new TextEncoder().encode(jwtSecret), {
+                        algorithms: ['HS256'],
+                        ...jwtVerifyOpts,
+                    }));
+                } catch (e) {
+                    if (e instanceof errors.JWTClaimValidationFailed && e.claim === 'aud') {
+                        ({ payload } = await jwtVerify(accessToken, new TextEncoder().encode(jwtSecret), {
+                            algorithms: ['HS256'],
+                            issuer,
+                            clockTolerance: 30,
+                        }));
+                    } else {
+                        throw e;
+                    }
+                }
             } else if (alg === 'none' || alg === undefined) {
                 throw new SecurityError(
                     SecurityErrorType.UNAUTHORIZED,
@@ -849,20 +922,29 @@ export class AuthService extends BaseService {
                     401,
                 );
             } else {
-                const jwksUrl = new URL('.well-known/jwks.json', `${issuer}/`);
+                const jwksUrl = new URL('.well-known/jwks.json', `${issuer.replace(/\/$/, '')}/`);
                 const JWKS = createRemoteJWKSet(jwksUrl);
-                ({ payload } = await jwtVerify(accessToken, JWKS, {
-                    issuer,
-                    audience: 'authenticated',
-                    clockTolerance: 30,
-                }));
+                try {
+                    ({ payload } = await jwtVerify(accessToken, JWKS, { ...jwtVerifyOpts }));
+                } catch (e) {
+                    if (e instanceof errors.JWTClaimValidationFailed && e.claim === 'aud') {
+                        ({ payload } = await jwtVerify(accessToken, JWKS, {
+                            issuer,
+                            clockTolerance: 30,
+                        }));
+                    } else {
+                        throw e;
+                    }
+                }
             }
 
             const sub = typeof payload.sub === 'string' ? payload.sub : null;
             const meta = payload.user_metadata as Record<string, unknown> | undefined;
+            const appMeta = payload.app_metadata as Record<string, unknown> | undefined;
             const email =
                 (typeof payload.email === 'string' ? payload.email : null) ??
-                (typeof meta?.email === 'string' ? meta.email : null);
+                (typeof meta?.email === 'string' ? meta.email : null) ??
+                (typeof appMeta?.email === 'string' ? appMeta.email : null);
             if (!sub || !email) {
                 throw new SecurityError(
                     SecurityErrorType.UNAUTHORIZED,
@@ -914,7 +996,31 @@ export class AuthService extends BaseService {
                 throw error;
             }
 
-            logger.error('Supabase bridge error', error);
+            if (error instanceof errors.JOSEError) {
+                logger.error('Supabase bridge JOSE error', {
+                    code: error.code,
+                    message: error.message,
+                });
+                if (
+                    error.code === 'ERR_JWS_SIGNATURE_VERIFICATION_FAILED' ||
+                    error.code === 'ERR_JWT_INVALID'
+                ) {
+                    throw new SecurityError(
+                        SecurityErrorType.UNAUTHORIZED,
+                        'Invalid Supabase token signature. For deployed Workers set `SUPABASE_JWT_SECRET` with `wrangler secret put SUPABASE_JWT_SECRET` to match Supabase Settings → API → JWT Secret (HS256), or ensure asymmetric JWKS is enabled.',
+                        401,
+                    );
+                }
+                if (error.code === 'ERR_JWT_EXPIRED') {
+                    throw new SecurityError(
+                        SecurityErrorType.UNAUTHORIZED,
+                        'Supabase session expired; sign in again',
+                        401,
+                    );
+                }
+            } else {
+                logger.error('Supabase bridge error', error);
+            }
             throw new SecurityError(
                 SecurityErrorType.UNAUTHORIZED,
                 'Supabase authentication failed',
