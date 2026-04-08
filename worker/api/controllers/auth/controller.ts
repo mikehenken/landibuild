@@ -756,6 +756,7 @@ export class AuthController extends BaseController {
     ): Promise<Response> {
         try {
             const supabaseMode = AuthController.isSupabaseAuthEnabled(env);
+            const oauthOnly = AuthController.hasOAuthProviders(env);
 
             const legacyGoogle = !!env.GOOGLE_CLIENT_ID && !!env.GOOGLE_CLIENT_SECRET;
             const legacyGithub = !!env.GITHUB_CLIENT_ID && !!env.GITHUB_CLIENT_SECRET;
@@ -772,7 +773,8 @@ export class AuthController extends BaseController {
             const providers = {
                 google: supabaseMode ? supabaseGoogle : legacyGoogle,
                 github: supabaseMode ? supabaseGithub : legacyGithub,
-                email: true,
+                // Align with POST /api/auth/login and /register when OAuth/Supabase is configured.
+                email: !oauthOnly,
             };
 
             const hasOAuth = providers.google || providers.github;
@@ -784,7 +786,7 @@ export class AuthController extends BaseController {
                 mode: supabaseMode ? 'supabase' : 'legacy',
                 providers,
                 hasOAuth,
-                requiresEmailAuth: !hasOAuth,
+                requiresEmailAuth: providers.email,
                 csrfToken,
                 csrfExpiresIn: Math.floor(CsrfService.defaults.tokenTTL / 1000),
             });

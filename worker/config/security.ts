@@ -39,12 +39,29 @@ export function getConfigurableSecurityDefaults(): ConfigurableSecuritySettings 
 /**
  * Get allowed origins based on environment
  */
+function pushHttpsVariants(origins: string[], host: string): void {
+	const trimmed = host.trim().replace(/^https?:\/\//, '').split('/')[0] ?? '';
+	if (!trimmed) {
+		return;
+	}
+	origins.push(`https://${trimmed}`);
+	// www and apex are different browser origins; allow both for the same deployment.
+	if (!trimmed.startsWith('www.')) {
+		origins.push(`https://www.${trimmed}`);
+	} else {
+		const apex = trimmed.slice('www.'.length);
+		if (apex) {
+			origins.push(`https://${apex}`);
+		}
+	}
+}
+
 export function getAllowedOrigins(env: Env): string[] {
     const origins: string[] = [];
     
     // Production domains
     if (env.CUSTOM_DOMAIN) {
-        origins.push(`https://${env.CUSTOM_DOMAIN}`);
+		pushHttpsVariants(origins, env.CUSTOM_DOMAIN);
     }
     
     // Development origins (only in development)

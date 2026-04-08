@@ -50,21 +50,6 @@ export class CodeGeneratorAgent extends Agent<Env, AgentState> implements AgentI
     /** Ticket manager for WebSocket authentication */
     private ticketManager = new WsTicketManager();
 
-    /**
-     * When true, blocks new LLM calls until a client reconnects. Set only after a grace period
-     * with no viewers so refresh/multi-tab behavior is unaffected.
-     */
-    private disconnectedHaltActive = false;
-
-    /**
-     * If all tabs disconnect briefly (navigation, refresh), we do not abort immediately.
-     * After this delay with zero active sockets, we cancel in-flight inference and set
-     * disconnectedHaltActive. shouldBeGenerating is left unchanged so reconnect can auto-resume
-     * (e.g. client `generate_all` after `agent_connected`).
-     */
-    private disconnectTokenGuardTimer: ReturnType<typeof setTimeout> | null = null;
-    private static readonly DISCONNECT_TOKEN_GUARD_MS = 8_000;
-
     /** Tracks D1 model catalog revision applied to this session (user model config reload). */
     private lastSeenModelCatalogRevision: number | null = null;
     
@@ -253,8 +238,6 @@ export class CodeGeneratorAgent extends Agent<Env, AgentState> implements AgentI
 	}
     
     onConnect(connection: Connection, ctx: ConnectionContext) {
-        this.clearDisconnectTokenGuardTimer();
-        this.disconnectedHaltActive = false;
         this.logger().info(`Agent connected for agent ${this.getAgentId()}`, { connection, ctx });
         let previewUrl = '';
         try {
@@ -325,41 +308,12 @@ export class CodeGeneratorAgent extends Agent<Env, AgentState> implements AgentI
         return this.ctx.getWebSockets();
     }
 
-    isDisconnectedHaltActive(): boolean {
-        return this.disconnectedHaltActive;
-    }
-
-    clearDisconnectTokenGuardTimer(): void {
-        if (this.disconnectTokenGuardTimer !== null) {
-            clearTimeout(this.disconnectTokenGuardTimer);
-            this.disconnectTokenGuardTimer = null;
-        }
-    }
-
     /**
-     * Last viewer disconnected: start grace timer. Reconnect clears it; otherwise we pause LLM spend
-     * without mutating generation intent in agent state.
+     * When true, inference should treat the session as viewer-disconnected (token guard).
+     * Wired to WebSocket lifecycle when disconnect grace scheduling is enabled.
      */
-    scheduleDisconnectTokenGuardIfNoViewers(): void {
-        this.clearDisconnectTokenGuardTimer();
-        this.disconnectTokenGuardTimer = setTimeout(() => {
-            this.disconnectTokenGuardTimer = null;
-            const active = this.getWebSockets().filter(
-                (ws) => ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING,
-            ).length;
-            if (active > 0) {
-                return;
-            }
-            this.logger().warn('No WebSocket clients after grace period; pausing LLM calls until reconnect', {
-                graceMs: CodeGeneratorAgent.DISCONNECT_TOKEN_GUARD_MS,
-            });
-            this.disconnectedHaltActive = true;
-            try {
-                this.getBehavior().cancelCurrentInference();
-            } catch (err) {
-                this.logger().warn('cancelCurrentInference skipped on disconnect guard', { err: String(err) });
-            }
-        }, CodeGeneratorAgent.DISCONNECT_TOKEN_GUARD_MS);
+    isDisconnectedHaltActive(): boolean {
+        return false;
     }
 
     handleVaultUnlocked(): void {
@@ -667,11 +621,9 @@ export class CodeGeneratorAgent extends Agent<Env, AgentState> implements AgentI
     /**
      * Broadcast message to all connected WebSocket clients.
      *
-     * App code uses typed `(type, data)`; PartyKit `Server` and the Agents SDK use
-     * `broadcast(JSON.stringify({ ... }), excludeIds?)`. The SDK state sync calls
-     * `this.broadcast(JSON.stringify({ state, type: 'cf_agent_state' }), [...])`.
-     * If we treated that string as a message *type*, clients would receive
-     * `{ type: '{"state":...}' }` and the UI would hit "Unhandled message".
+     * App code uses typed `(type, data)`; the Agents SDK uses
+     * `broadcast(JSON.stringify({ ... }), excludeIds?)`. Without unwrapping, `cf_agent_state`
+     * would arrive as `{ type: '<json string>' }` and the client would not handle it.
      */
     public broadcast<T extends WebSocketMessageType>(type: T, data?: WebSocketMessageData<T>): void;
     public broadcast(msg: string | ArrayBuffer | ArrayBufferView, without?: string[]): void;
