@@ -1,0 +1,19 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://landi.io/schemas/anthropic.schema.json",
+  "type": "object",
+  "properties": {
+    "provider": { "const": "anthropic" },
+    "thinking": {
+      "type": "object",
+      "properties": {
+        "type": { "const": "enabled" },
+        "budget_tokens": { "type": "number", "minimum": 0 }
+      },
+      "required": ["type", "budget_tokens"],
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false,
+  "required": ["provider"]
+}

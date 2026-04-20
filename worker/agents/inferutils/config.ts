@@ -37,6 +37,48 @@ const COMMON_AGENT_CONFIGS = {
         fallbackModel: AIModels.GROK_4_1_FAST_NON_REASONING,
         temperature: 1,
     },
+    nasPlan: {
+        name: AIModels.KIMI_2_5,
+        reasoning_effort: 'high' as const,
+        max_tokens: 8000,
+        temperature: 1,
+        fallbackModel: AIModels.GEMINI_2_5_PRO,
+    },
+    nasResearch: {
+        name: AIModels.KIMI_2_5,
+        reasoning_effort: 'high' as const,
+        max_tokens: 8000,
+        temperature: 1,
+        fallbackModel: AIModels.GEMINI_2_5_PRO,
+    },
+    nasCritic: {
+        name: AIModels.KIMI_2_5,
+        reasoning_effort: 'high' as const,
+        max_tokens: 8000,
+        temperature: 1,
+        fallbackModel: AIModels.GEMINI_2_5_PRO,
+    },
+    nasRespond: {
+        name: AIModels.KIMI_2_5,
+        reasoning_effort: 'low' as const,
+        max_tokens: 8000,
+        temperature: 1,
+        fallbackModel: AIModels.GEMINI_2_5_FLASH,
+    },
+    nasEdit: {
+        name: 'landi-2.5-pro',
+        reasoning_effort: 'low' as const,
+        max_tokens: 32000,
+        temperature: 0.2,
+        fallbackModel: AIModels.KIMI_2_5,
+    },
+    nasVision: {
+        name: AIModels.GEMINI_2_5_FLASH,
+        reasoning_effort: 'low' as const,
+        max_tokens: 8000,
+        temperature: 1,
+        fallbackModel: AIModels.GEMINI_2_5_PRO,
+    },
 } as const;
 
 const SHARED_IMPLEMENTATION_CONFIG = {
@@ -108,6 +150,16 @@ const PLATFORM_AGENT_CONFIG: AgentConfig = {
     },
     agenticProjectBuilder: {
         name: AIModels.GEMINI_3_FLASH_PREVIEW,
+        reasoning_effort: 'medium',
+        max_tokens: 8000,
+        temperature: 1,
+        fallbackModel: AIModels.GEMINI_2_5_PRO,
+    },
+    // §2.4 Rule 1: Kimi K2.5 is the authoritative default for nasGenerate.
+    // The executor wraps the existing workflow — that workflow may internally
+    // route to a different model, but the orchestrator's default MUST be Kimi.
+    nasGenerate: {
+        name: AIModels.KIMI_2_5,
         reasoning_effort: 'medium',
         max_tokens: 8000,
         temperature: 1,

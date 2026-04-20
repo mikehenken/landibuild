@@ -1,0 +1,13 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://landi.io/schemas/elevenlabs.schema.json",
+  "type": "object",
+  "properties": {
+    "provider": { "const": "elevenlabs" },
+    "voiceId": { "type": "string", "minLength": 1 },
+    "stability": { "type": "number", "minimum": 0, "maximum": 1 },
+    "similarityBoost": { "type": "number", "minimum": 0, "maximum": 1 }
+  },
+  "additionalProperties": false,
+  "required": ["provider", "voiceId"]
+}

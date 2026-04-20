@@ -22,5 +22,13 @@
 	],
 	"vars": {
 		"SECRETS_ENCRYPTION_KEY": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
-	}
+	},
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "landi-local",
+			"database_id": "test-db-id",
+			"migrations_dir": "migrations"
+		}
+	]
 }

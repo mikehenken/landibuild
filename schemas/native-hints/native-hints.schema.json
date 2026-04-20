@@ -1,0 +1,21 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://landi.io/schemas/native-hints.schema.json",
+  "title": "NativeHints",
+  "type": "object",
+  "required": ["provider"],
+  "discriminator": {
+    "propertyName": "provider"
+  },
+  "oneOf": [
+    { "$ref": "gemini.schema.json" },
+    { "$ref": "openai-compat.schema.json" },
+    { "$ref": "anthropic.schema.json" },
+    { "$ref": "elevenlabs.schema.json" },
+    { "$ref": "runway.schema.json" },
+    { "$ref": "veo.schema.json" },
+    { "$ref": "replicate.schema.json" },
+    { "$ref": "langflow.schema.json" },
+    { "$ref": "unknown.schema.json" }
+  ]
+}

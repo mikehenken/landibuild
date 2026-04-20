@@ -5,6 +5,10 @@ import { setupStatsRoutes } from './statsRoutes';
 import { setupAnalyticsRoutes } from './analyticsRoutes';
 import { setupUserSecretsRoutes } from './userSecretsRoutes';
 import { setupModelConfigRoutes } from './modelConfigRoutes';
+import { setupModelRoutingRoutes } from './modelRoutingRoutes';
+import { setupModelsRoutes } from './modelsRoutes';
+import { setupCustomEndpointsRoutes } from './customEndpointsRoutes';
+import { setupDemandTransformersRoutes } from './demandTransformersRoutes';
 import { setupModelProviderRoutes } from './modelProviderRoutes';
 import { setupGitHubExporterRoutes } from './githubExporterRoutes';
 import { setupCodegenRoutes } from './codegenRoutes';
@@ -60,6 +64,10 @@ export function setupRoutes(app: Hono<AppEnv>): void {
     
     // Model configuration and provider keys routes
     setupModelConfigRoutes(app);
+    setupModelRoutingRoutes(app);
+    setupModelsRoutes(app);
+    setupCustomEndpointsRoutes(app);
+    setupDemandTransformersRoutes(app);
     
     // Model provider routes
     setupModelProviderRoutes(app);

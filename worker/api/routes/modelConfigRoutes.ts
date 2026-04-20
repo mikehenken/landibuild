@@ -32,4 +32,7 @@ export function setupModelConfigRoutes(app: Hono<AppEnv>): void {
 
     // Mount the router under /api/model-configs
     app.route('/api/model-configs', modelConfigRouter);
+
+    // Single-resolution endpoint (as requested in plan)
+    app.get('/api/model-config/resolve', setAuthLevel(AuthConfig.authenticated), adaptController(ModelConfigController, ModelConfigController.resolveModelConfig));
 }

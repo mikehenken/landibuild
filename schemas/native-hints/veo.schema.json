@@ -1,0 +1,18 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://landi.io/schemas/veo.schema.json",
+  "type": "object",
+  "properties": {
+    "provider": { "const": "veo" },
+    "aspectRatio": {
+      "type": "string",
+      "enum": ["16:9", "9:16"]
+    },
+    "personGeneration": {
+      "type": "string",
+      "enum": ["allow", "block"]
+    }
+  },
+  "additionalProperties": false,
+  "required": ["provider"]
+}

@@ -93,6 +93,51 @@ const SHARED_OR_FREE_IMPL = {
 	fallbackModel: AIModels.OPENROUTER_NVIDIA_NEMOTRON_3_SUPER_120B_A12B_FREE,
 };
 
+const SHARED_NAS_CONFIGS = {
+	nasPlan: {
+		name: AIModels.KIMI_2_5,
+		reasoning_effort: 'high' as const,
+		max_tokens: 8000,
+		temperature: 1,
+		fallbackModel: AIModels.GEMINI_2_5_PRO,
+	},
+	nasResearch: {
+		name: AIModels.KIMI_2_5,
+		reasoning_effort: 'high' as const,
+		max_tokens: 8000,
+		temperature: 1,
+		fallbackModel: AIModels.GEMINI_2_5_PRO,
+	},
+	nasCritic: {
+		name: AIModels.KIMI_2_5,
+		reasoning_effort: 'high' as const,
+		max_tokens: 8000,
+		temperature: 1,
+		fallbackModel: AIModels.GEMINI_2_5_PRO,
+	},
+	nasRespond: {
+		name: AIModels.KIMI_2_5,
+		reasoning_effort: 'low' as const,
+		max_tokens: 8000,
+		temperature: 1,
+		fallbackModel: AIModels.GEMINI_2_5_FLASH,
+	},
+	nasEdit: {
+		name: 'landi-2.5-pro',
+		reasoning_effort: 'low' as const,
+		max_tokens: 32000,
+		temperature: 0.2,
+		fallbackModel: AIModels.KIMI_2_5,
+	},
+	nasVision: {
+		name: AIModels.GEMINI_2_5_FLASH,
+		reasoning_effort: 'low' as const,
+		max_tokens: 8000,
+		temperature: 1,
+		fallbackModel: AIModels.GEMINI_2_5_PRO,
+	},
+};
+
 /** Default platform bundle when not using PLATFORM_AGENT_CONFIG — OpenRouter free-tier. */
 export const OPENROUTER_FREE_AGENT_CONFIG: AgentConfig = {
 	screenshotAnalysis: {
@@ -176,6 +221,14 @@ export const OPENROUTER_FREE_AGENT_CONFIG: AgentConfig = {
 		temperature: 1,
 		fallbackModel: AIModels.OPENROUTER_NVIDIA_NEMOTRON_3_SUPER_120B_A12B_FREE,
 	},
+	...SHARED_NAS_CONFIGS,
+	nasGenerate: {
+		name: AIModels.OPENROUTER_QWEN_QWEN3_CODER_FREE,
+		reasoning_effort: 'medium',
+		max_tokens: 8000,
+		temperature: 1,
+		fallbackModel: AIModels.OPENROUTER_QWEN_QWEN3_NEXT_80B_A3B_INSTRUCT_FREE,
+	},
 };
 
 const GEMINI_HIGH: AgentConfig = {
@@ -248,6 +301,14 @@ const GEMINI_HIGH: AgentConfig = {
 		temperature: 1,
 		fallbackModel: AIModels.GEMINI_2_5_PRO,
 	},
+	...SHARED_NAS_CONFIGS,
+	nasGenerate: {
+		name: AIModels.GEMINI_3_FLASH_PREVIEW,
+		reasoning_effort: 'medium',
+		max_tokens: 8000,
+		temperature: 1,
+		fallbackModel: AIModels.GEMINI_2_5_PRO,
+	},
 };
 
 const GEMINI_MEDIUM: AgentConfig = {
@@ -310,6 +371,14 @@ const GEMINI_MEDIUM: AgentConfig = {
 		max_tokens: 8000,
 		temperature: 1,
 		fallbackModel: AIModels.GEMINI_2_5_FLASH,
+	},
+	...SHARED_NAS_CONFIGS,
+	nasGenerate: {
+		name: AIModels.GEMINI_3_FLASH_PREVIEW,
+		reasoning_effort: 'medium',
+		max_tokens: 8000,
+		temperature: 1,
+		fallbackModel: AIModels.GEMINI_3_FLASH_PREVIEW,
 	},
 };
 
@@ -385,6 +454,14 @@ const GEMINI_LOW: AgentConfig = {
 		max_tokens: 8000,
 		temperature: 1,
 		fallbackModel: AIModels.GEMINI_2_5_FLASH_LITE,
+	},
+	...SHARED_NAS_CONFIGS,
+	nasGenerate: {
+		name: AIModels.GEMINI_2_5_FLASH,
+		reasoning_effort: 'medium',
+		max_tokens: 8000,
+		temperature: 1,
+		fallbackModel: AIModels.GEMINI_2_5_FLASH,
 	},
 };
 
@@ -472,6 +549,14 @@ const OPENROUTER_HIGH: AgentConfig = {
 		temperature: 1,
 		fallbackModel: AIModels.OPENROUTER_GOOGLE_GEMINI_2_5_PRO,
 	},
+	...SHARED_NAS_CONFIGS,
+	nasGenerate: {
+		name: AIModels.OPENROUTER_QWEN_QWEN3_CODER_NEXT,
+		reasoning_effort: 'medium',
+		max_tokens: 8000,
+		temperature: 1,
+		fallbackModel: AIModels.OPENROUTER_Z_AI_GLM_5,
+	},
 };
 
 const OPENROUTER_MEDIUM: AgentConfig = {
@@ -552,6 +637,14 @@ const OPENROUTER_MEDIUM: AgentConfig = {
 		max_tokens: 8000,
 		temperature: 1,
 		fallbackModel: AIModels.OPENROUTER_GOOGLE_GEMINI_2_5_PRO,
+	},
+	...SHARED_NAS_CONFIGS,
+	nasGenerate: {
+		name: AIModels.OPENROUTER_Z_AI_GLM_4_7,
+		reasoning_effort: 'medium',
+		max_tokens: 8000,
+		temperature: 1,
+		fallbackModel: AIModels.OPENROUTER_QWEN_QWEN3_5_PLUS_02_15,
 	},
 };
 
@@ -634,6 +727,14 @@ const OPENROUTER_LOW: AgentConfig = {
 		temperature: 1,
 		fallbackModel: AIModels.OPENROUTER_GOOGLE_GEMINI_2_5_FLASH_LITE,
 	},
+	...SHARED_NAS_CONFIGS,
+	nasGenerate: {
+		name: AIModels.OPENROUTER_Z_AI_GLM_4_7_FLASH,
+		reasoning_effort: 'medium',
+		max_tokens: 8000,
+		temperature: 1,
+		fallbackModel: AIModels.OPENROUTER_GOOGLE_GEMINI_2_5_FLASH_LITE,
+	},
 };
 
 const MIX_HIGH: AgentConfig = {
@@ -706,6 +807,14 @@ const MIX_HIGH: AgentConfig = {
 		temperature: 1,
 		fallbackModel: AIModels.OPENROUTER_QWEN_QWEN3_CODER_NEXT,
 	},
+	...SHARED_NAS_CONFIGS,
+	nasGenerate: {
+		name: AIModels.OPENROUTER_QWEN_QWEN3_CODER_NEXT,
+		reasoning_effort: 'medium',
+		max_tokens: 8000,
+		temperature: 1,
+		fallbackModel: AIModels.GEMINI_3_FLASH_PREVIEW,
+	},
 };
 
 const MIX_MEDIUM: AgentConfig = {
@@ -774,6 +883,14 @@ const MIX_MEDIUM: AgentConfig = {
 		max_tokens: 8000,
 		temperature: 1,
 		fallbackModel: AIModels.OPENROUTER_Z_AI_GLM_4_7,
+	},
+	...SHARED_NAS_CONFIGS,
+	nasGenerate: {
+		name: AIModels.OPENROUTER_Z_AI_GLM_4_7,
+		reasoning_effort: 'medium',
+		max_tokens: 8000,
+		temperature: 1,
+		fallbackModel: AIModels.GEMINI_3_FLASH_PREVIEW,
 	},
 };
 
@@ -855,6 +972,14 @@ const MIX_LOW: AgentConfig = {
 		max_tokens: 8000,
 		temperature: 1,
 		fallbackModel: AIModels.OPENROUTER_Z_AI_GLM_4_7_FLASH,
+	},
+	...SHARED_NAS_CONFIGS,
+	nasGenerate: {
+		name: AIModels.OPENROUTER_Z_AI_GLM_4_7_FLASH,
+		reasoning_effort: 'medium',
+		max_tokens: 8000,
+		temperature: 1,
+		fallbackModel: AIModels.GEMINI_2_5_FLASH,
 	},
 };
 

@@ -1,0 +1,15 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://landi.io/schemas/replicate.schema.json",
+  "type": "object",
+  "properties": {
+    "provider": { "const": "replicate" },
+    "replicateModelSlug": { "type": "string", "minLength": 1 },
+    "schemaOverrides": {
+      "type": "object",
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": false,
+  "required": ["provider", "replicateModelSlug"]
+}

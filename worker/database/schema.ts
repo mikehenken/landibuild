@@ -1,5 +1,5 @@
 import { sql } from 'drizzle-orm';
-import { sqliteTable, text, integer, real, index, uniqueIndex } from 'drizzle-orm/sqlite-core';
+import { sqliteTable, text, integer, real, index, uniqueIndex, type AnySQLiteColumn } from 'drizzle-orm/sqlite-core';
 
 // Schema enum arrays derived from config types  
 const REASONING_EFFORT_VALUES = ['low', 'medium', 'high'] as const;
@@ -601,3 +601,110 @@ export type NewModelConfigGlobalRevisionRow = typeof modelConfigGlobalRevision.$
 
 export type Star = typeof stars.$inferSelect;
 export type NewStar = typeof stars.$inferInsert;
+
+// ========================================
+// AI MODEL ROUTING AND ORCHESTRATION
+// ========================================
+
+/**
+ * Custom Endpoints table - User/Agency defined LLM endpoints
+ */
+export const customEndpoints = sqliteTable('custom_endpoints', {
+    id: text('id').primaryKey(),
+    scopeKind: text('scope_kind', { enum: ['platform', 'agency', 'account', 'user'] }).notNull(),
+    scopeId: text('scope_id'),
+    name: text('name').notNull(),
+    providerKind: text('provider_kind').notNull(),
+    baseUrl: text('base_url').notNull(),
+    headers: text('headers', { mode: 'json' }),
+    authRef: text('auth_ref'),
+    createdAt: integer('created_at', { mode: 'timestamp' }).default(sql`CURRENT_TIMESTAMP`),
+});
+
+/**
+ * Models Catalog table
+ */
+export const models = sqliteTable('models', {
+    id: text('id').primaryKey(),
+    displayName: text('display_name').notNull(),
+    provider: text('provider').notNull(),
+    invocationKind: text('invocation_kind').notNull(),
+    endpointId: text('endpoint_id').references(() => customEndpoints.id, { onDelete: 'set null' }),
+    
+    // Capability flags
+    supportsTools: integer('supports_tools', { mode: 'boolean' }),
+    supportsStreaming: integer('supports_streaming', { mode: 'boolean' }),
+    supportsVision: integer('supports_vision', { mode: 'boolean' }),
+    supportsAudioInput: integer('supports_audio_input', { mode: 'boolean' }),
+    supportsJsonMode: integer('supports_json_mode', { mode: 'boolean' }),
+    supportsSystemPrompt: integer('supports_system_prompt', { mode: 'boolean' }),
+    supportsThinking: integer('supports_thinking', { mode: 'boolean' }),
+    
+    // Limits
+    maxInputTokens: integer('max_input_tokens'),
+    maxOutputTokens: integer('max_output_tokens'),
+    maxImageCount: integer('max_image_count'),
+    maxAudioSeconds: integer('max_audio_seconds'),
+    
+    // Economics
+    inputCostPerMtok: real('input_cost_per_mtok'),
+    outputCostPerMtok: real('output_cost_per_mtok'),
+    perRequestCost: real('per_request_cost'),
+    costTier: text('cost_tier', { enum: ['free', 'low', 'mid', 'high', 'premium'] }),
+    
+    // Performance class
+    latencyClass: text('latency_class', { enum: ['realtime', 'fast', 'standard', 'slow'] }),
+    qualityTier: text('quality_tier', { enum: ['draft', 'standard', 'pro', 'flagship'] }),
+    
+    // Defaults
+    defaultTemperature: real('default_temperature'),
+    defaultReasoning: text('default_reasoning'),
+    defaultMaxOutput: integer('default_max_output'),
+    
+    // Native provider knobs
+    nativeHints: text('native_hints', { mode: 'json' }),
+    
+    // Tags / situational routing
+    tags: text('tags', { mode: 'json' }),
+    useCases: text('use_cases', { mode: 'json' }),
+    
+    // Trust
+    verification: text('verification', { enum: ['verified', 'self-declared', 'unverified'] }).notNull().default('self-declared'),
+    status: text('status', { enum: ['active', 'deprecated', 'experimental', 'disabled'] }),
+    scopeKind: text('scope_kind', { enum: ['platform', 'agency', 'account', 'user'] }),
+    scopeId: text('scope_id'),
+    
+    // §2.7.1: both reference `models.id`. Self-references must be typed via the
+    // Drizzle `() =>` callback form so the types resolve at generation time.
+    fallbackModelId: text('fallback_model_id').references((): AnySQLiteColumn => models.id, { onDelete: 'set null' }),
+    replacesModelId: text('replaces_model_id').references((): AnySQLiteColumn => models.id, { onDelete: 'set null' }),
+    
+    createdAt: integer('created_at', { mode: 'timestamp' }).default(sql`CURRENT_TIMESTAMP`),
+    updatedAt: integer('updated_at', { mode: 'timestamp' }).default(sql`CURRENT_TIMESTAMP`),
+    deprecatedAt: integer('deprecated_at', { mode: 'timestamp' }),
+});
+
+/**
+ * Demand Transformers table
+ */
+export const demandTransformers = sqliteTable('demand_transformers', {
+    id: text('id').primaryKey(),
+    scopeKind: text('scope_kind', { enum: ['platform', 'agency', 'account', 'user', 'run'] }).notNull(),
+    scopeId: text('scope_id'),
+    priority: integer('priority').notNull().default(0),
+    locked: integer('locked', { mode: 'boolean' }).notNull().default(false),
+    transformers: text('transformers', { mode: 'json' }).notNull(),
+    appliesWhen: text('applies_when', { mode: 'json' }),
+    ttlExpiresAt: integer('ttl_expires_at', { mode: 'timestamp' }),
+    status: text('status').notNull().default('active'),
+    createdAt: integer('created_at', { mode: 'timestamp' }).default(sql`CURRENT_TIMESTAMP`),
+});
+
+export type CustomEndpoint = typeof customEndpoints.$inferSelect;
+export type NewCustomEndpoint = typeof customEndpoints.$inferInsert;
+
+export type ModelCatalogRow = typeof models.$inferSelect;
+export type NewModelCatalogRow = typeof models.$inferInsert;
+
+export type DemandTransformer = typeof demandTransformers.$inferSelect;
+export type NewDemandTransformer = typeof demandTransformers.$inferInsert;

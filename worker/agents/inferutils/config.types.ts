@@ -829,6 +829,13 @@ export interface AgentConfig {
     conversationalResponse: ModelConfig;
     deepDebugger: ModelConfig;
     agenticProjectBuilder: ModelConfig;
+    nasPlan: ModelConfig;
+    nasEdit: ModelConfig;
+    nasResearch: ModelConfig;
+    nasGenerate: ModelConfig;
+    nasCritic: ModelConfig;
+    nasRespond: ModelConfig;
+    nasVision: ModelConfig;
 }
 
 // Provider and reasoning effort types for validation

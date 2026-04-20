@@ -1,0 +1,14 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://landi.io/schemas/openai-compat.schema.json",
+  "type": "object",
+  "properties": {
+    "provider": { "const": "openai-compat" },
+    "reasoningEffort": {
+      "type": "string",
+      "enum": ["low", "medium", "high"]
+    }
+  },
+  "additionalProperties": false,
+  "required": ["provider"]
+}

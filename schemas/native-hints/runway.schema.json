@@ -1,0 +1,16 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://landi.io/schemas/runway.schema.json",
+  "type": "object",
+  "properties": {
+    "provider": { "const": "runway" },
+    "model": {
+      "type": "string",
+      "enum": ["gen3", "gen3-turbo"]
+    },
+    "duration": { "type": "number", "minimum": 0 },
+    "motionScale": { "type": "number", "minimum": 0 }
+  },
+  "additionalProperties": false,
+  "required": ["provider", "model"]
+}

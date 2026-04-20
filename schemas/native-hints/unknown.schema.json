@@ -1,0 +1,11 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://landi.io/schemas/unknown.schema.json",
+  "type": "object",
+  "properties": {
+    "provider": { "const": "unknown" },
+    "raw": { "type": "object" }
+  },
+  "additionalProperties": false,
+  "required": ["provider", "raw"]
+}

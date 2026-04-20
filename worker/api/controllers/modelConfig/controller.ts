@@ -704,4 +704,64 @@ export class ModelConfigController extends BaseController {
             );
         }
     }
+
+    static async resolveModelConfig(request: Request, env: Env, _ctx: ExecutionContext, context: RouteContext): Promise<ControllerResponse<ApiResponse<ResolveModelConfigData>>> {
+        try {
+            const user = context.user!;
+            const url = new URL(request.url);
+            const agentAction = url.searchParams.get('agentAction') as AgentActionKey;
+
+            if (!agentAction || !(agentAction in AGENT_CONFIG)) {
+                return ModelConfigController.createErrorResponse<ResolveModelConfigData>('Invalid agent action name', 400);
+            }
+
+            const db = env.DB;
+            const modelConfigService = new ModelConfigService(env);
+            const config = await modelConfigService.getUserModelConfig(user.id, agentAction);
+
+            const revResult = await db.prepare('SELECT revision FROM model_config_global_revision LIMIT 1').first<{revision: number}>();
+            const revision = revResult?.revision || 0;
+
+            // §2.5.2: the resolver MUST surface gateway metadata when one is configured.
+            // Mirrors the logic in `worker/agents/inferutils/core.ts` (see `getGatewayUrl` +
+            // `getApiKey`): if the deployment sets a custom CLOUDFLARE_AI_GATEWAY_URL we
+            // return that as an override so downstream callers don't have to re-resolve it.
+            //
+            // BYOK secrets NEVER flow through this response. We only include the
+            // platform-configured gateway token here. When a future catalog row carries a
+            // demand-transformer with a custom endpoint, the resolver will look it up
+            // from the `custom_endpoints` table instead of env.
+            const gatewayBaseUrl = env.CLOUDFLARE_AI_GATEWAY_URL;
+            const aiGatewayOverride = gatewayBaseUrl &&
+                gatewayBaseUrl !== 'none' &&
+                gatewayBaseUrl.trim() !== ''
+                ? {
+                      baseUrl: gatewayBaseUrl,
+                      // Token kept opaque — the executor only needs to know a gateway
+                      // override exists. The actual token stays server-side.
+                      token: env.CLOUDFLARE_AI_GATEWAY_TOKEN ? '__platform__' : null,
+                  }
+                : null;
+
+            return ModelConfigController.createSuccessResponse<ResolveModelConfigData>({
+                config,
+                revision,
+                aiGatewayOverride,
+                message: 'Model configuration resolved successfully'
+            });
+        } catch (error) {
+            this.logger.error('Error resolving model configuration:', error);
+            return ModelConfigController.createErrorResponse<ResolveModelConfigData>('Failed to resolve model configuration', 500);
+        }
+    }
+}
+
+/**
+ * Response shape for `GET /api/model-config/resolve`.
+ */
+export interface ResolveModelConfigData {
+    config: Awaited<ReturnType<ModelConfigService['getUserModelConfig']>>;
+    revision: number;
+    aiGatewayOverride: { baseUrl: string; token: string | null } | null;
+    message: string;
 }

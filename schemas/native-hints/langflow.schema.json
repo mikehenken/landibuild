@@ -1,0 +1,15 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://landi.io/schemas/langflow.schema.json",
+  "type": "object",
+  "properties": {
+    "provider": { "const": "langflow" },
+    "flowId": { "type": "string", "minLength": 1 },
+    "inputMapping": {
+      "type": "object",
+      "additionalProperties": { "type": "string" }
+    }
+  },
+  "additionalProperties": false,
+  "required": ["provider", "flowId"]
+}
